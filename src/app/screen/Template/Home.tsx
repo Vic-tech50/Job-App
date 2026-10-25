@@ -1,4 +1,4 @@
-import React, { useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 
 import {
   Dimensions,
@@ -17,6 +17,7 @@ import { LinearGradient } from "expo-linear-gradient";
 import { MaterialCommunityIcons } from "@expo/vector-icons";
 
 // import { useNavigation } from "@react-navigation/native";
+import { Link } from "expo-router";
 import { useNavigation } from "expo-router/react-navigation";
 
 const slides = [
@@ -186,19 +187,23 @@ const Home = () => {
 
         {/* ACTION BUTTONS */}
         <View style={styles.actionContainer}>
-          <Pressable
-            style={styles.loginBtn}
-            onPress={() => navigation.navigate("Login" as never)}
-          >
-            <Text style={styles.loginText}>Login</Text>
-          </Pressable>
+          <Link href="/screen/Auth/LoginScreen" asChild>
+            <Pressable
+              style={styles.loginBtn}
+              onPress={() => navigation.navigate("Login" as never)}
+            >
+              <Text style={styles.loginText}>Login</Text>
+            </Pressable>
+          </Link>
 
-          <Pressable
-            style={styles.registerBtn}
-            onPress={() => navigation.navigate("Register" as never)}
-          >
-            <Text style={styles.registerText}>Create Account</Text>
-          </Pressable>
+          <Link href="/screen/Auth/RegisterScreen" asChild>
+            <Pressable
+              style={styles.registerBtn}
+              // onPress={() => navigation.navigate("Register" as never)}
+            >
+              <Text style={styles.registerText}>Create Account</Text>
+            </Pressable>
+          </Link>
         </View>
       </ScrollView>
     </LinearGradient>

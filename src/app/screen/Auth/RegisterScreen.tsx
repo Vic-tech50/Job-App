@@ -12,6 +12,7 @@ import {
 } from "react-native";
 import { Button, TextInput } from "react-native-paper";
 import { api } from "../../config";
+import { Link } from "expo-router";
 
 export default function Register({ navigation }: any) {
   const [name, setName] = React.useState("");
@@ -172,8 +173,8 @@ export default function Register({ navigation }: any) {
           <View style={styles.loginContainer}>
             <Text style={styles.loginText}>Already have an account?</Text>
 
-            <TouchableOpacity onPress={() => navigation.navigate("Login")}>
-              <Text style={styles.loginLink}> Login</Text>
+            <TouchableOpacity>
+              <Link href="/screen/Auth/LoginScreen" style={styles.loginLink}> Login</Link>
             </TouchableOpacity>
           </View>
         </View>

@@ -1,13 +1,12 @@
 import { MaterialCommunityIcons } from "@expo/vector-icons";
 // import { createBottomTabNavigator } from "@react-navigation/bottom-tabs";
 import { createBottomTabNavigator } from "expo-router/js-tabs";
-import React from "react";
 import { StyleSheet, View } from "react-native";
-import FindFreelancers from "../screen/Messenger/Hire";
+import FindFreelancers from "../(Messenger)/Hire";
+import ClientMessages from "../(Messenger)/Message";
+import ClientPayments from "../(Messenger)/Payment";
+import ClientProfile from "../(Messenger)/Profile";
 import ClientDashboard from "../screen/Messenger/Index";
-import ClientMessages from "../screen/Messenger/Message";
-import ClientPayments from "../screen/Messenger/Payment";
-import ClientProfile from "../screen/Messenger/Profile";
 
 // CLIENT SCREENS
 // import ClientDashboard from "../screen/Client/Dashboard";

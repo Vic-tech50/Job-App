@@ -1,5 +1,6 @@
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { LinearGradient } from "expo-linear-gradient";
+import { Link, useRouter } from "expo-router";
 import * as React from "react";
 import {
   Alert,
@@ -13,10 +14,14 @@ import {
 import { Button, TextInput } from "react-native-paper";
 import { api } from "../../config";
 
+// Inside your login component:
+
 export default function Login({ navigation }: any) {
   const [email, setEmail] = React.useState("");
   const [password, setPassword] = React.useState("");
   const [loading, setLoading] = React.useState(false);
+
+  const router = useRouter();
 
   const loginData = async () => {
     if (loading) return;
@@ -70,15 +75,23 @@ export default function Login({ navigation }: any) {
 
       if (data.user.status !== 1) {
         Alert.alert("Success", data.message || "Login successful!");
-        navigation.navigate("WizardForm", {
-          user: data.user,
-          token: data.token,
+        router.push({
+          pathname: "/screen/Template/WizardFormScreen" as any,
+          params: {
+            user: JSON.stringify(data.user),
+            token: data.access_token ?? data.token,
+          },
         });
+        // navigation.navigate("WizardForm", {
+        //   user: data.user,
+        //   token: data.token,
+        // });
       } else {
         await AsyncStorage.setItem("user", JSON.stringify(data.user));
         await AsyncStorage.setItem("token", data.token);
         Alert.alert("Success", data.message || "Login successful!");
-        navigation.navigate("MyTabs");
+        // navigation.navigate("MyTabs");
+        router.replace("/(Worker)/index");
       }
       console.log("Logged in user:", data.user);
     } catch (err: any) {
@@ -177,8 +190,14 @@ export default function Login({ navigation }: any) {
           <View style={styles.registerContainer}>
             <Text style={styles.registerText}>Don’t have an account?</Text>
 
-            <TouchableOpacity onPress={() => navigation.navigate("Register")}>
-              <Text style={styles.registerLink}> Register</Text>
+            <TouchableOpacity>
+              <Link
+                href="/screen/Auth/RegisterScreen"
+                style={styles.registerLink}
+              >
+                {" "}
+                Register
+              </Link>
             </TouchableOpacity>
           </View>
         </View>

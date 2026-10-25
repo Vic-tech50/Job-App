@@ -1,14 +1,13 @@
 // import { createStackNavigator } from "@react-navigation/stack";
 import { createStackNavigator } from "expo-router/js-stack";
+import FindFreelancers from "../(Messenger)/Hire";
 import Login from "../screen/Auth/LoginScreen";
 import Register from "../screen/Auth/RegisterScreen";
-import FindFreelancers from "../screen/Messenger/Hire";
 import Home from "../screen/Template/Home";
-import WizardForm from "../screen/Template/WizardFormScreen";
 import EditProfile from "../screen/Worker/EditProfile";
+import EditSecurity from "../screen/Worker/EditSecurity";
 import MyTabs from "./bottom";
 import MessengerTabs from "./MessengerBottom";
-import EditSecurity from "../screen/Worker/EditSecurity";
 
 const Stack = createStackNavigator();
 

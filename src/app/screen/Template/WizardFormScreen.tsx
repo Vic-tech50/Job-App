@@ -12,6 +12,7 @@ import {
 import { Picker } from "@react-native-picker/picker";
 import { LinearGradient } from "expo-linear-gradient";
 
+import { useLocalSearchParams } from "expo-router";
 import {
   Button,
   ProgressBar,
@@ -39,7 +40,15 @@ type Props = {
 };
 
 const WizardForm = ({ route, navigation }: Props) => {
-  const user = route?.params?.user;
+  // const user = route?.params?.user;
+
+  // Receive the parameters sent through Expo Router.
+  const { user: userParam } = useLocalSearchParams<{
+    user?: string;
+  }>();
+
+  // Convert the JSON string into a JavaScript object.
+  const user = userParam ? JSON.parse(userParam) : null;
 
   const [step, setStep] = React.useState(1);
   // const [name, setName] = React.useState(user?.fullname || "");
