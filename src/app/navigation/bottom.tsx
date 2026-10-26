@@ -1,20 +1,18 @@
 import { MaterialCommunityIcons } from "@expo/vector-icons";
 // import { createBottomTabNavigator } from "@react-navigation/bottom-tabs";
 import { createBottomTabNavigator } from "expo-router/js-tabs";
-import React from "react";
 import { View } from "react-native";
-import Gigs from "../screen/Worker/Gigs";
+import Gigs from "../(Worker)/Gigs";
+import Messages from "../(Worker)/Message";
+import Profile from "../(Worker)/Profile";
 import WorkerIndex from "../screen/Worker/Index";
-import Messages from "../screen/Worker/Message";
-import Profile from "../screen/Worker/Profile";
-import Earnings from "../screen/Worker/Earnings";
 
 const Tab = createBottomTabNavigator();
 
 export default function WorkerTabs() {
   return (
     <Tab.Navigator
-     screenOptions={({ route }) => ({
+      screenOptions={({ route }) => ({
         headerStyle: {
           backgroundColor: "#0F172A",
           elevation: 0,

@@ -91,7 +91,7 @@ export default function Login({ navigation }: any) {
         await AsyncStorage.setItem("token", data.token);
         Alert.alert("Success", data.message || "Login successful!");
         // navigation.navigate("MyTabs");
-        router.replace("/(Worker)/index");
+        router.replace("/(Worker)");
       }
       console.log("Logged in user:", data.user);
     } catch (err: any) {

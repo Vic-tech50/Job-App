@@ -1,3 +1,5 @@
+import AsyncStorage from "@react-native-async-storage/async-storage";
+import { useRouter } from "expo-router";
 import React from "react";
 import {
   Image,
@@ -11,6 +13,23 @@ import { LinearGradient } from "expo-linear-gradient";
 import { MaterialCommunityIcons } from "@expo/vector-icons";
 
 export default function ClientProfile({ navigation }: any) {
+
+  // Inside your component:
+const router = useRouter();
+
+const logout = async () => {
+  try {
+    // Remove the stored authentication data.
+    await AsyncStorage.multiRemove(["token", "user"]);
+
+    // Navigate to the login screen using Expo Router.
+    router.replace("/screen/Auth/LoginScreen");
+  } catch (error) {
+    // Log any errors that occur during logout.
+    console.log("Logout Error:", error);
+  }
+};
+
   return (
     <LinearGradient
       colors={["#0F172A", "#1E293B", "#334155"]}
@@ -235,7 +254,7 @@ export default function ClientProfile({ navigation }: any) {
         </View>
 
         {/* LOGOUT */}
-        <TouchableOpacity style={styles.logoutBtn}>
+        <TouchableOpacity style={styles.logoutBtn} onPress={logout}>
           <MaterialCommunityIcons
             name="logout"
             size={22}

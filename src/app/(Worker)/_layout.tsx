@@ -13,13 +13,34 @@ export default function TabLayout() {
           ),
         }}
       />
-      {/* <Tabs.Screen
-        name="settings"
+      <Tabs.Screen
+        name="Gigs"
         options={{
-          title: 'Settings',
-          tabBarIcon: ({ color }) => <FontAwesome size={28} name="cog" color={color} />,
+          title: "Gigs",
+          tabBarIcon: ({ color }) => (
+            <FontAwesome size={28} name="briefcase" color={color} />
+          ),
         }}
-      /> */}
+      />
+      <Tabs.Screen
+        name="Message"
+        options={{
+          title: "Message",
+          tabBarIcon: ({ color }) => (
+            <FontAwesome size={28} name="envelope" color={color} />
+          ),
+        }}
+      />
+
+       <Tabs.Screen
+        name="Profile"
+        options={{
+          title: "Profile",
+          tabBarIcon: ({ color }) => (
+            <FontAwesome size={28} name="user" color={color} />
+          ),
+        }}
+      />
     </Tabs>
   );
 }

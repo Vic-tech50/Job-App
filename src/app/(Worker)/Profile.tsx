@@ -1,4 +1,5 @@
 import AsyncStorage from "@react-native-async-storage/async-storage"; //npm expo install @react-native-async-storage/async-storage  very important for loging out
+import { Link, useRouter } from "expo-router";
 import * as React from "react";
 import {
   Image,
@@ -13,8 +14,6 @@ import { MaterialCommunityIcons } from "@expo/vector-icons";
 
 export default function Profile({ navigation }: any) {
   const [user, setUser] = React.useState<any>(null);
-
-  
 
   React.useEffect(() => {
     const loadUser = async () => {
@@ -33,18 +32,17 @@ export default function Profile({ navigation }: any) {
     loadUser();
   }, []);
 
+  const router = useRouter();
+
   const logout = async () => {
     try {
-      // Remove stored auth data
-      await AsyncStorage.removeItem("token");
-      await AsyncStorage.removeItem("user");
+      // Remove the stored authentication data.
+      await AsyncStorage.multiRemove(["token", "user"]);
 
-      // Reset navigation stack
-      navigation.reset({
-        index: 0,
-        routes: [{ name: "Login" }],
-      });
+      // Navigate to the login screen using Expo Router.
+      router.replace("/screen/Auth/LoginScreen");
     } catch (error) {
+      // Log any errors that occur during logout.
       console.log("Logout Error:", error);
     }
   };
@@ -121,30 +119,29 @@ export default function Profile({ navigation }: any) {
       {/* ACTIONS */}
       <View style={styles.card}>
         {/* EDIT PROFILE */}
-        <TouchableOpacity
-          style={styles.listItem}
-          onPress={() => navigation.navigate("EditProfile")}
-        >
-          <View style={styles.listLeft}>
+       
+          <TouchableOpacity style={styles.listItem} onPress={()=>router.push('/screen/Worker/EditProfile')}>
+            <View style={styles.listLeft}>
+              <MaterialCommunityIcons
+                name="account-edit-outline"
+                size={22}
+                color="#2563EB"
+              />
+
+              <Text style={styles.listText}>Edit Profile</Text>
+            </View>
+
             <MaterialCommunityIcons
-              name="account-edit-outline"
-              size={22}
-              color="#2563EB"
+              name="chevron-right"
+              size={24}
+              color="#94A3B8"
             />
-
-            <Text style={styles.listText}>Edit Profile</Text>
-          </View>
-
-          <MaterialCommunityIcons
-            name="chevron-right"
-            size={24}
-            color="#94A3B8"
-          />
-        </TouchableOpacity>
+          </TouchableOpacity>
+      
 
         <TouchableOpacity
           style={styles.listItem}
-          onPress={() => navigation.navigate("EditSecurity")}
+         onPress={()=>router.push('/screen/Worker/EditSecurity')}
         >
           <View style={styles.listLeft}>
             <MaterialCommunityIcons name="security" size={22} color="#2563EB" />
@@ -302,3 +299,5 @@ const styles = StyleSheet.create({
     alignItems: "center",
   },
 });
+
+// export{ logout };
