@@ -1,16 +1,51 @@
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Text } from "@/components/ui/text";
+import { View } from "@/components/ui/view";
 import { useEffect, useState } from "react";
 import {
   Alert,
   ScrollView,
   StyleSheet,
-  Text,
+  //   Text,
   TouchableOpacity,
-  View,
 } from "react-native";
+import { HelloWave } from '@/components/ui/hello-wave';
 // import { LinearGradient } from "expo-linear-gradient";
-import { Button } from "react-native-paper";
 
-export default function WorkerIndex({route, navigation}: any) {
+export function CardStats() {
+  const stats = [
+    { title: "Skills", value: "2" },
+    { title: "New Message", value: "0" },
+  ];
+  return (
+    <View
+      style={{
+        flexDirection: "row",
+        flexWrap: "wrap",
+        gap: 10,
+        marginBottom: 10,
+      }}
+    >
+      {stats.map((stat, index) => (
+        <Card key={index} style={{ flex: 1, minWidth: 150 }}>
+          <CardHeader>
+            <CardTitle style={{ fontSize: 16 }}>{stat.title}</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <Text style={{ fontSize: 24, fontWeight: "bold", marginBottom: 4 }}>
+              {stat.value}
+            </Text>
+            {/* <Text style={{ color: "#22c55e", fontSize: 14 }}>
+              {stat.change} from last month
+            </Text> */}
+          </CardContent>
+        </Card>
+      ))}
+    </View>
+  );
+}
+
+export default function WorkerIndex({ route, navigation }: any) {
   const user = route?.params?.user;
   const [earnings, setEarnings] = useState(0);
   const [portfolioUploaded, setPortfolioUploaded] = useState(false);
@@ -21,29 +56,26 @@ export default function WorkerIndex({route, navigation}: any) {
     setEarnings(1250.5);
   }, []);
 
-  useEffect(() => {
-    const gigTimer = setTimeout(() => {
-      setNotifications((prev) => [
-        ...prev,
-        "New gig available: Web Design Project",
-      ]);
-      Alert.alert("New Gig!", "A new gig has been posted for you.");
-    }, 3000);
+  //   useEffect(() => {
+  //     const gigTimer = setTimeout(() => {
+  //       setNotifications((prev) => [
+  //         ...prev,
+  //         "New gig available: Web Design Project",
+  //       ]);
+  //       Alert.alert("New Gig!", "A new gig has been posted for you.");
+  //     }, 3000);
 
-    return () => clearTimeout(gigTimer);
-  }, []);
+  //     return () => clearTimeout(gigTimer);
+  //   }, []);
 
-  useEffect(() => {
-    const msgTimer = setTimeout(() => {
-      setMessages((prev) => [
-        ...prev,
-        "You have a new message from Client",
-      ]);
-      Alert.alert("New Message!", "You have received a new message.");
-    }, 5000);
+  //   useEffect(() => {
+  //     const msgTimer = setTimeout(() => {
+  //       setMessages((prev) => [...prev, "You have a new message from Client"]);
+  //       Alert.alert("New Message!", "You have received a new message.");
+  //     }, 5000);
 
-    return () => clearTimeout(msgTimer);
-  }, []);
+  //     return () => clearTimeout(msgTimer);
+  //   }, []);
 
   const handleUploadPortfolio = () => {
     setPortfolioUploaded(true);
@@ -55,82 +87,70 @@ export default function WorkerIndex({route, navigation}: any) {
     //   colors={["#0F172A", "#1E293B", "#334155"]}
     //   style={styles.container}
     // >
-      <ScrollView contentContainerStyle={styles.scroll}>
-        {/* Header */}
-        <Text style={styles.title}>Worker {user?.fullname || "Dashboard"}</Text>
-        <Text style={styles.subtitle}>
-          Manage your gigs, earnings & activity
+    <ScrollView contentContainerStyle={styles.scroll}>
+      {/* Header */}
+      <Text style={styles.title}>Welcome <HelloWave>👋</HelloWave> {user?.fullname || "Worker"}</Text>
+      <Text style={styles.subtitle}>Manage your gigs, earnings & activity</Text>
+
+      {/* Earnings Card */}
+      <View style={styles.card}>
+        <Text style={styles.cardTitle}>Total Earnings</Text>
+        <Text style={styles.earnings}>${earnings.toFixed(2)}</Text>
+      </View>
+
+      <CardStats />
+
+      {/* Portfolio */}
+      <View style={styles.card}>
+        <Text style={styles.cardTitle}>Skills</Text>
+
+        <TouchableOpacity
+          onPress={handleUploadPortfolio}
+          style={[
+            styles.button,
+            {
+              backgroundColor: portfolioUploaded ? "#16A34A" : "#2563EB",
+            },
+          ]}
+        >
+          <Text style={styles.buttonText}>
+            {portfolioUploaded ? "Skill Added ✓" : "Add Skill"}
+          </Text>
+        </TouchableOpacity>
+      </View>
+
+      {/* Notifications */}
+      {/* <View style={styles.card}>
+        <Text style={styles.cardTitle}>
+          Gig Notifications ({notifications.length})
         </Text>
 
-        {/* Earnings Card */}
-        <View style={styles.card}>
-          <Text style={styles.cardTitle}>Total Earnings</Text>
-          <Text style={styles.earnings}>
-            ${earnings.toFixed(2)}
-          </Text>
-        </View>
-
-        {/* Portfolio */}
-        <View style={styles.card}>
-          <Text style={styles.cardTitle}>Portfolio</Text>
-
-          <TouchableOpacity
-            onPress={handleUploadPortfolio}
-            style={[
-              styles.button,
-              {
-                backgroundColor: portfolioUploaded
-                  ? "#16A34A"
-                  : "#2563EB",
-              },
-            ]}
-          >
-            <Text style={styles.buttonText}>
-              {portfolioUploaded
-                ? "Portfolio Uploaded ✓"
-                : "Upload Portfolio"}
+        {notifications.length === 0 ? (
+          <Text style={styles.emptyText}>No new notifications</Text>
+        ) : (
+          notifications.map((n, i) => (
+            <Text key={i} style={styles.itemText}>
+              • {n}
             </Text>
-          </TouchableOpacity>
-        </View>
+          ))
+        )}
+      </View> */}
 
-        {/* Notifications */}
-        <View style={styles.card}>
-          <Text style={styles.cardTitle}>
-            Gig Notifications ({notifications.length})
-          </Text>
+      {/* Messages */}
+      {/* <View style={styles.card}>
+        <Text style={styles.cardTitle}>Messages ({messages.length})</Text>
 
-          {notifications.length === 0 ? (
-            <Text style={styles.emptyText}>
-              No new notifications
+        {messages.length === 0 ? (
+          <Text style={styles.emptyText}>No new messages</Text>
+        ) : (
+          messages.map((m, i) => (
+            <Text key={i} style={styles.itemText}>
+              • {m}
             </Text>
-          ) : (
-            notifications.map((n, i) => (
-              <Text key={i} style={styles.itemText}>
-                • {n}
-              </Text>
-            ))
-          )}
-        </View>
-
-        {/* Messages */}
-        <View style={styles.card}>
-          <Text style={styles.cardTitle}>
-            Messages ({messages.length})
-          </Text>
-
-          {messages.length === 0 ? (
-            <Text style={styles.emptyText}>
-              No new messages
-            </Text>
-          ) : (
-            messages.map((m, i) => (
-              <Text key={i} style={styles.itemText}>
-                • {m}
-              </Text>
-            ))
-          )}
-        </View>
-      </ScrollView>
+          ))
+        )}
+      </View> */}
+    </ScrollView>
     // </LinearGradient>
   );
 }
@@ -142,7 +162,7 @@ const styles = StyleSheet.create({
 
   scroll: {
     padding: 20,
-    paddingTop: 60,
+    paddingTop: 40,
   },
 
   title: {

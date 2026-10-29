@@ -8,6 +8,7 @@ export default function TabLayout() {
         name="index"
         options={{
           title: "Home",
+          headerTitle: "Your Dashboard",
           tabBarIcon: ({ color }) => (
             <FontAwesome size={28} name="home" color={color} />
           ),
@@ -16,7 +17,7 @@ export default function TabLayout() {
       <Tabs.Screen
         name="Gigs"
         options={{
-          title: "Gigs",
+          title: "Skills",
           tabBarIcon: ({ color }) => (
             <FontAwesome size={28} name="briefcase" color={color} />
           ),
@@ -35,7 +36,8 @@ export default function TabLayout() {
        <Tabs.Screen
         name="Profile"
         options={{
-          title: "Profile",
+          title: "Me",
+          headerTitle: "Profile",
           tabBarIcon: ({ color }) => (
             <FontAwesome size={28} name="user" color={color} />
           ),

@@ -61,7 +61,7 @@ export default function Profile({ navigation }: any) {
         <Text style={styles.name}>{user?.fullname}</Text>
 
         <Text style={styles.role}>
-          Full Stack Freelancer •{" "}
+          {user?.occupation || "Professional"} •{" "}
           <Text style={{ color: "#16A34A" }}>Verified ✓</Text>{" "}
         </Text>
       </View>

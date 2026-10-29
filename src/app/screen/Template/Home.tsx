@@ -188,19 +188,13 @@ const Home = () => {
         {/* ACTION BUTTONS */}
         <View style={styles.actionContainer}>
           <Link href="/screen/Auth/LoginScreen" asChild>
-            <Pressable
-              style={styles.loginBtn}
-              onPress={() => navigation.navigate("Login" as never)}
-            >
+            <Pressable style={styles.loginBtn}>
               <Text style={styles.loginText}>Login</Text>
             </Pressable>
           </Link>
 
           <Link href="/screen/Auth/RegisterScreen" asChild>
-            <Pressable
-              style={styles.registerBtn}
-              // onPress={() => navigation.navigate("Register" as never)}
-            >
+            <Pressable style={styles.registerBtn}>
               <Text style={styles.registerText}>Create Account</Text>
             </Pressable>
           </Link>

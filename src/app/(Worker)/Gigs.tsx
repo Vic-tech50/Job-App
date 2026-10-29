@@ -80,10 +80,11 @@ export default function ArtisanWorkUpload() {
   const getData = async () => {
     try {
       const response = await fetch(`${api}/users/fetchwork`);
-      // const text = await response.text();
-      // console.log("RAW RESPONSE:", text);
       const result = await response.json();
-      // console.log(result);
+      if (!result.ok) {
+        Alert.alert("Error fetching Data");
+      }
+
       setData(result); // ✅ store data
     } catch (err: any) {
       Alert.alert("Error", err.message);
@@ -175,7 +176,7 @@ export default function ArtisanWorkUpload() {
     <ScrollView contentContainerStyle={styles.scroll}>
       {/* HEADER */}
       <View style={styles.header}>
-        <Text style={styles.title}>Upload Your Work</Text>
+        <Text style={styles.title}>Your Work</Text>
 
         <Text style={styles.subtitle}>
           Showcase your artisan projects and attract clients
@@ -183,15 +184,15 @@ export default function ArtisanWorkUpload() {
       </View>
 
       {/* Portfolio */}
-      <View style={styles.card}>
-        <Text style={styles.cardTitle}>Portfolio</Text>
+      <View>
+       
 
         <TouchableOpacity
           onPress={() => openUploadModal()}
           style={[styles.button]}
         >
           <Text style={{ color: "#fff", fontWeight: "600" }}>
-            Upload New Work
+            Add New Work
           </Text>
         </TouchableOpacity>
       </View>
@@ -356,7 +357,7 @@ const styles = StyleSheet.create({
 
   scroll: {
     padding: 20,
-    paddingTop: 60,
+    paddingTop: 40,
   },
 
   header: {
@@ -396,7 +397,7 @@ const styles = StyleSheet.create({
   },
 
   subtitle: {
-    color: "#CBD5E1",
+    color: "grey",
     marginTop: 8,
     fontSize: 15,
   },
