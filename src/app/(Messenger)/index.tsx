@@ -1,5 +1,9 @@
+import { HelloWave } from "@/components/ui/hello-wave";
 import { MaterialCommunityIcons } from "@expo/vector-icons";
+import AsyncStorage from "@react-native-async-storage/async-storage";
 import { LinearGradient } from "expo-linear-gradient";
+import { useRouter } from "expo-router";
+import React from "react";
 import {
   ScrollView,
   StyleSheet,
@@ -9,6 +13,26 @@ import {
 } from "react-native";
 
 export default function ClientDashboard({ navigation }: any) {
+  const [user, setUser] = React.useState<any>(null);
+
+  const router = useRouter();
+
+  React.useEffect(() => {
+    const loadUser = async () => {
+      try {
+        const storedUser = await AsyncStorage.getItem("user");
+
+        if (storedUser) {
+          const userData = JSON.parse(storedUser);
+          setUser(userData);
+        }
+      } catch (error) {
+        console.log("Error loading user:", error);
+      }
+    };
+
+    loadUser();
+  }, []);
   const recentProjects = [
     {
       id: 1,
@@ -38,9 +62,11 @@ export default function ClientDashboard({ navigation }: any) {
         {/* HEADER */}
         <View style={styles.header}>
           <View>
-            <Text style={styles.welcome}>Welcome Back 👋</Text>
+            <Text style={styles.welcome}>
+              Welcome Back <HelloWave size="sm"></HelloWave>
+            </Text>
 
-            <Text style={styles.name}>Client Dashboard</Text>
+            <Text style={styles.name}>{user?.fullname || "Client"}</Text>
           </View>
 
           <TouchableOpacity style={styles.notificationBtn}>
@@ -62,8 +88,11 @@ export default function ClientDashboard({ navigation }: any) {
         </View>
 
         {/* QUICK ACTIONS */}
+        <View style={styles.sectionHeader}>
+          <Text style={styles.sectionTitle}>Quick Actions</Text>
+        </View>
         <View style={styles.quickActions}>
-          <TouchableOpacity
+          {/* <TouchableOpacity
             style={styles.actionCard}
             onPress={() => navigation.navigate("PostGig")}
           >
@@ -74,11 +103,11 @@ export default function ClientDashboard({ navigation }: any) {
             />
 
             <Text style={styles.actionText}>Post Gig</Text>
-          </TouchableOpacity>
+          </TouchableOpacity> */}
 
           <TouchableOpacity
             style={styles.actionCard}
-            onPress={() => navigation.navigate("FindFreelancers")}
+            onPress={() => router.push("/(Messenger)/Hire")}
           >
             <MaterialCommunityIcons
               name="account-search-outline"
@@ -86,12 +115,12 @@ export default function ClientDashboard({ navigation }: any) {
               color="#2563EB"
             />
 
-            <Text style={styles.actionText}>Hire Talent</Text>
+            <Text style={styles.actionText}>Hire Worker</Text>
           </TouchableOpacity>
 
           <TouchableOpacity
             style={styles.actionCard}
-            onPress={() => navigation.navigate("Messages")}
+            onPress={() => router.push("/(Messenger)/Message")}
           >
             <MaterialCommunityIcons
               name="chat-processing-outline"
@@ -209,7 +238,7 @@ const styles = StyleSheet.create({
 
   scroll: {
     padding: 20,
-    paddingTop: 60,
+    paddingTop: 20,
     paddingBottom: 120,
   },
 
@@ -265,13 +294,13 @@ const styles = StyleSheet.create({
 
   quickActions: {
     flexDirection: "row",
-    justifyContent: "space-between",
+    justifyContent: "space-around",
     marginBottom: 20,
   },
 
   actionCard: {
     backgroundColor: "#fff",
-    width: "31%",
+    width: "46%",
     borderRadius: 18,
     paddingVertical: 18,
     alignItems: "center",

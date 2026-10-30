@@ -1,106 +1,161 @@
-import React, { useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
+
 import {
+  Alert,
   FlatList,
   Image,
-  Platform,
   StyleSheet,
   Text,
   TouchableOpacity,
   View,
 } from "react-native";
 
-import { LinearGradient } from "expo-linear-gradient";
-
 import { MaterialCommunityIcons } from "@expo/vector-icons";
-
+import { LinearGradient } from "expo-linear-gradient";
 import { ActivityIndicator, TextInput } from "react-native-paper";
 
-const freelancersData = [
-  {
-    id: "1",
-    name: "Victor Okenyi",
-    profession: "Full Stack Developer",
-    skills: ["React Native", "Laravel", "Node.js"],
-    location: "Enugu, Nigeria",
-    rating: 4.9,
-    avatar: "https://i.pravatar.cc/150?img=12",
-    hourlyRate: "$35/hr",
-  },
+import { api } from "../config";
 
-  {
-    id: "2",
-    name: "Sarah Johnson",
-    profession: "UI/UX Designer",
-    skills: ["Figma", "Adobe XD", "UI Design"],
-    location: "Lagos, Nigeria",
-    rating: 4.8,
-    avatar: "https://i.pravatar.cc/150?img=32",
-    hourlyRate: "$28/hr",
-  },
+// Worker type.
+interface Worker {
+  id: string | number;
+  name: string;
+  profession: string;
+  skills: string[];
+  location: string;
+  rating: number;
+  avatar: string;
+  hourlyRate: string;
+}
 
-  {
-    id: "3",
-    name: "Michael Brown",
-    profession: "Mobile Developer",
-    skills: ["Flutter", "React Native", "Firebase"],
-    location: "Abuja, Nigeria",
-    rating: 4.7,
-    avatar: "https://i.pravatar.cc/150?img=15",
-    hourlyRate: "$40/hr",
-  },
-
-  {
-    id: "4",
-    name: "David Mark",
-    profession: "Backend Developer",
-    skills: ["Laravel", "PHP", "MySQL"],
-    location: "Port Harcourt, Nigeria",
-    rating: 4.6,
-    avatar: "https://i.pravatar.cc/150?img=22",
-    hourlyRate: "$32/hr",
-  },
-];
-
-const categories = [
-  "All",
-  "Full Stack Developer",
-  "UI/UX Designer",
-  "Mobile Developer",
-  "Backend Developer",
-];
+// Available categories.
+// const categories = [
+//   "All",
+//   "Full Stack Developer",
+//   "UI/UX Designer",
+//   "Mobile Developer",
+//   "Backend Developer",
+// ];
 
 export default function FindFreelancers({ navigation }: any) {
+  // Search and filter states.
   const [search, setSearch] = useState("");
-
   const [selectedCategory, setSelectedCategory] = useState("All");
-
   const [location, setLocation] = useState("");
 
-  const [loading] = useState(false);
+  // Backend data state.
+  const [workers, setWorkers] = useState<Worker[]>([]);
 
-  // FILTER LOGIC
+  // Loading state.
+  const [loading, setLoading] = useState(true);
+
+  // Error state.
+  const [error, setError] = useState("");
+
+  // Fetch workers from backend.
+  const getWorkerData = useCallback(async () => {
+    try {
+      setLoading(true);
+      setError("");
+
+      const response = await fetch(`${api}/api/fetchWorker`);
+
+      // Check HTTP response.
+      if (!response.ok) {
+        throw new Error(`Server error: ${response.status}`);
+      }
+
+      const result = await response.json();
+
+      // Check backend response.
+      if (result.ok === false) {
+        throw new Error(result.message || "Unable to fetch workers");
+      }
+
+      // Support common Laravel and Express response formats.
+      const workerList = Array.isArray(result)
+        ? result
+        : Array.isArray(result.data)
+          ? result.data
+          : Array.isArray(result.workers)
+            ? result.workers
+            : Array.isArray(result.data?.data)
+              ? result.data.data
+              : [];
+
+      // Convert backend data into the format used by the UI.
+      const formattedWorkers: Worker[] = workerList.map((worker: any) => ({
+        id: worker.id,
+
+        name: worker.name || worker.fullname || "Unknown Worker",
+
+        profession:
+          worker.profession || worker.occupation || worker.title || "Artisan",
+
+        skills: Array.isArray(worker.skills)
+          ? worker.skills
+          : typeof worker.skills === "string"
+            ? worker.skills.split(",").map((skill: string) => skill.trim())
+            : [],
+        location:[worker.street, worker.lga, worker.state].filter(Boolean).join(", ") || "Location unavailable",
+
+        rating: Number(worker.rating || 0),
+
+        avatar:
+          worker.avatar ||
+          worker.profile_photo ||
+          worker.profile_picture ||
+          "https://i.pravatar.cc/150",
+
+        hourlyRate:
+          worker.hourlyRate ||
+          worker.hourly_rate ||
+          worker.rate ||
+          "Negotiable",
+      }));
+
+      setWorkers(formattedWorkers);
+    } catch (err: any) {
+      console.log("Worker fetching error:", err);
+
+      setError(err.message || "Something went wrong");
+
+      Alert.alert("Error", err.message || "Unable to fetch workers");
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
+  // Fetch workers when screen loads.
+  useEffect(() => {
+    getWorkerData();
+  }, [getWorkerData]);
+
+  // Filter workers dynamically.
   const filteredFreelancers = useMemo(() => {
-    return freelancersData.filter((freelancer) => {
+    return workers.filter((worker) => {
+      // Search by name or skills.
       const matchesSearch =
-        freelancer.name.toLowerCase().includes(search.toLowerCase()) ||
-        freelancer.skills.some((skill) =>
+        worker.name.toLowerCase().includes(search.toLowerCase()) ||
+        worker.skills.some((skill) =>
           skill.toLowerCase().includes(search.toLowerCase()),
         );
 
+      // Filter by profession.
       const matchesCategory =
-        selectedCategory === "All" ||
-        freelancer.profession === selectedCategory;
+        selectedCategory === "All" || worker.profession === selectedCategory;
 
-      const matchesLocation =
-        location.length === 0 ||
-        freelancer.location.toLowerCase().includes(location.toLowerCase());
+      // Filter by location.
+      const matchesLocation = worker.location
+        .toLowerCase()
+        .includes(location.toLowerCase());
 
       return matchesSearch && matchesCategory && matchesLocation;
     });
-  }, [search, selectedCategory, location]);
+  }, [workers, search, selectedCategory, location]);
 
-  // FREELANCER CARD
-  const renderFreelancer = ({ item }: any) => (
+  // Render individual worker.
+  const renderFreelancer = ({ item }: { item: Worker }) => (
     <TouchableOpacity
       style={styles.card}
       activeOpacity={0.9}
@@ -110,7 +165,7 @@ export default function FindFreelancers({ navigation }: any) {
         })
       }
     >
-      {/* TOP */}
+      {/* Worker information */}
       <View style={styles.topRow}>
         <View style={styles.leftTop}>
           <Image source={{ uri: item.avatar }} style={styles.avatar} />
@@ -125,11 +180,11 @@ export default function FindFreelancers({ navigation }: any) {
         <View style={styles.ratingBox}>
           <MaterialCommunityIcons name="star" size={16} color="#F59E0B" />
 
-          <Text style={styles.rating}>{item.rating}</Text>
+          <Text style={styles.rating}>{item.rating.toFixed(1)}</Text>
         </View>
       </View>
 
-      {/* LOCATION */}
+      {/* Location */}
       <View style={styles.infoRow}>
         <MaterialCommunityIcons
           name="map-marker-outline"
@@ -140,20 +195,27 @@ export default function FindFreelancers({ navigation }: any) {
         <Text style={styles.location}>{item.location}</Text>
       </View>
 
-      {/* SKILLS */}
+      {/* Skills */}
       <View style={styles.skillsContainer}>
-        {item.skills.map((skill: string, index: number) => (
-          <View key={index} style={styles.skillBadge}>
+        {item.skills.map((skill, index) => (
+          <View key={`${item.id}-${index}`} style={styles.skillBadge}>
             <Text style={styles.skillText}>{skill}</Text>
           </View>
         ))}
       </View>
 
-      {/* BOTTOM */}
+      {/* Bottom section */}
       <View style={styles.bottomRow}>
         <Text style={styles.rate}>{item.hourlyRate}</Text>
 
-        <TouchableOpacity style={styles.hireBtn}>
+        <TouchableOpacity
+          style={styles.hireBtn}
+          onPress={() =>
+            navigation.navigate("FreelancerDetails", {
+              freelancer: item,
+            })
+          }
+        >
           <Text style={styles.hireBtnText}>Hire Now</Text>
         </TouchableOpacity>
       </View>
@@ -165,25 +227,14 @@ export default function FindFreelancers({ navigation }: any) {
       colors={["#0F172A", "#1E293B", "#334155"]}
       style={styles.container}
     >
-      {Platform.OS === "web" ? (
-        <>
-          <Text>isPad</Text>
-          <Text>This is a web browser</Text>
-        </>
-      ) : (
-        <>
-          <Text>isPad</Text>
-          <Text>This is a Android browser</Text>
-        </>
-      )}
-      {/* HEADER */}
+      {/* Header */}
       <View style={styles.header}>
         <Text style={styles.title}>Find Freelancers</Text>
 
         <Text style={styles.subtitle}>Search and hire top talent</Text>
       </View>
 
-      {/* SEARCH */}
+      {/* Search */}
       <View style={styles.searchSection}>
         <TextInput
           mode="outlined"
@@ -204,7 +255,7 @@ export default function FindFreelancers({ navigation }: any) {
         />
       </View>
 
-      {/* CATEGORY FILTER */}
+      {/* Categories
       <FlatList
         horizontal
         data={categories}
@@ -232,43 +283,55 @@ export default function FindFreelancers({ navigation }: any) {
             </Text>
           </TouchableOpacity>
         )}
-      />
+      /> */}
 
-      {/* LOADING */}
+      {/* Loading */}
       {loading ? (
         <View style={styles.loaderContainer}>
           <ActivityIndicator size="large" color="#2563EB" />
         </View>
+      ) : error && workers.length === 0 ? (
+        // Error state
+        <View style={styles.emptyContainer}>
+          <MaterialCommunityIcons name="wifi-off" size={70} color="#94A3B8" />
+
+          <Text style={styles.emptyTitle}>Unable to load workers</Text>
+
+          <Text style={styles.emptyText}>{error}</Text>
+
+          <TouchableOpacity style={styles.hireBtn} onPress={getWorkerData}>
+            <Text style={styles.hireBtnText}>Try Again</Text>
+          </TouchableOpacity>
+        </View>
+      ) : filteredFreelancers.length === 0 ? (
+        // Empty state
+        <View style={styles.emptyContainer}>
+          <MaterialCommunityIcons
+            name="account-search-outline"
+            size={80}
+            color="#94A3B8"
+          />
+
+          <Text style={styles.emptyTitle}>No freelancers found</Text>
+
+          <Text style={styles.emptyText}>
+            Try adjusting your search or filters
+          </Text>
+        </View>
       ) : (
-        <>
-          {/* EMPTY STATE */}
-          {filteredFreelancers.length === 0 ? (
-            <View style={styles.emptyContainer}>
-              <MaterialCommunityIcons
-                name="account-search-outline"
-                size={80}
-                color="#94A3B8"
-              />
-
-              <Text style={styles.emptyTitle}>No freelancers found</Text>
-
-              <Text style={styles.emptyText}>
-                Try adjusting your search or filters
-              </Text>
-            </View>
-          ) : (
-            <FlatList
-              data={filteredFreelancers}
-              keyExtractor={(item) => item.id}
-              renderItem={renderFreelancer}
-              contentContainerStyle={{
-                paddingHorizontal: 20,
-                paddingBottom: 120,
-              }}
-              showsVerticalScrollIndicator={false}
-            />
-          )}
-        </>
+        // Display backend workers.
+        <FlatList
+          data={filteredFreelancers}
+          keyExtractor={(item) => String(item.id)}
+          renderItem={renderFreelancer}
+          contentContainerStyle={{
+            paddingHorizontal: 20,
+            paddingBottom: 120,
+          }}
+          showsVerticalScrollIndicator={false}
+          refreshing={loading}
+          onRefresh={getWorkerData}
+        />
       )}
     </LinearGradient>
   );
@@ -277,7 +340,7 @@ export default function FindFreelancers({ navigation }: any) {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    paddingTop: 60,
+    paddingTop: 20,
   },
 
   header: {

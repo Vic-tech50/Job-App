@@ -12,7 +12,10 @@ import {
 import { Picker } from "@react-native-picker/picker";
 import { LinearGradient } from "expo-linear-gradient";
 
-import { useLocalSearchParams } from "expo-router";
+import { artisans } from "@/src/utils/artisanlist";
+import nigeriaLocations from "@/src/utils/stateLga";
+import { ToastMess } from "@/src/utils/toast";
+import { useLocalSearchParams, useRouter } from "expo-router";
 import {
   Button,
   ProgressBar,
@@ -21,11 +24,6 @@ import {
 } from "react-native-paper";
 import { api } from "../../config";
 
-// type Item = {
-//   id?: string | number;
-//   name?: string;
-//   email?: string;
-// };
 type Item = {
   id?: string | number;
   fullname?: string;
@@ -41,6 +39,7 @@ type Props = {
 
 const WizardForm = ({ route, navigation }: Props) => {
   // const user = route?.params?.user;
+  const router = useRouter();
 
   // Receive the parameters sent through Expo Router.
   const { user: userParam } = useLocalSearchParams<{
@@ -49,17 +48,8 @@ const WizardForm = ({ route, navigation }: Props) => {
 
   // Convert the JSON string into a JavaScript object.
   const user = userParam ? JSON.parse(userParam) : null;
-
   const [step, setStep] = React.useState(1);
-  // const [name, setName] = React.useState(user?.fullname || "");
   const [checked, setChecked] = React.useState("");
-
-  //  React.useEffect(() => {
-  //   if (item) {
-  //     setName(item.fullname ?? "");
-  //     setEmail(item.email ?? "");
-  //   }
-  // }, [item]);
 
   const [formData, setFormData] = React.useState({
     name: user?.fullname || "",
@@ -94,36 +84,56 @@ const WizardForm = ({ route, navigation }: Props) => {
     if (step > 1) setStep(step - 1);
   };
 
+  // const handleChange = (field: string, value: string) => {
+  //   setFormData({ ...formData, [field]: value });
+  // };
+
+  // Update form fields safely without overwriting other fields.
   const handleChange = (field: string, value: string) => {
-    setFormData({ ...formData, [field]: value });
+    setFormData((previousData) => ({
+      ...previousData,
+      [field]: value,
+    }));
   };
 
-  const handleSubmit = async () => {
-    try {
-      const response = await fetch("http://nativephpapp.test/api/users", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          ...formData,
-          gender: checked,
-        }),
-      });
+  // Find the selected state's information.
+  const selectedStateData = nigeriaLocations.find(
+    (item) =>
+      item.state.trim().toLowerCase() ===
+      String(formData.state || "")
+        .trim()
+        .toLowerCase(),
+  );
 
-      if (!response.ok) {
-        throw new Error("Failed to submit form");
-      }
+  // Get only the LGAs belonging to the selected state.
+  const lgaList = selectedStateData?.lgas || [];
 
-      const data = await response.json();
+  // const handleSubmit = async () => {
+  //   try {
+  //     const response = await fetch("http://nativephpapp.test/api/users", {
+  //       method: "POST",
+  //       headers: {
+  //         "Content-Type": "application/json",
+  //       },
+  //       body: JSON.stringify({
+  //         ...formData,
+  //         gender: checked,
+  //       }),
+  //     });
 
-      alert("Form submitted successfully!");
-      console.log(data);
-    } catch (error) {
-      alert("Error submitting form");
-      console.error(error);
-    }
-  };
+  //     if (!response.ok) {
+  //       throw new Error("Failed to submit form");
+  //     }
+
+  //     const data = await response.json();
+
+  //     alert("Form submitted successfully!");
+  //     console.log(data);
+  //   } catch (error) {
+  //     alert("Error submitting form");
+  //     console.error(error);
+  //   }
+  // };
 
   const updateData = async () => {
     try {
@@ -149,35 +159,26 @@ const WizardForm = ({ route, navigation }: Props) => {
       if (!response.ok) {
         alert(data.message || "Failed to update profile");
       } else {
-        Alert.alert("Success", data.message);
-        navigation.navigate("MyTabs", {
-          user: data.user,
-          // token: route?.params?.token,
+        ToastMess({
+          type: "success",
+          title: "Worker Data Saved",
+          content: data.message || "Worker Data Saved.",
         });
+        // Alert.alert("Success", data.message);
+        router.push({
+          pathname: "/(Worker)",
+          params: {
+            user: JSON.stringify(data.user),
+            token: data.access_token ?? data.token,
+          },
+        });
+
         console.log("Updated user:", data.user);
       }
     } catch (err: any) {
       Alert.alert("Error", err.message);
     }
   };
-
-  const artisans = [
-    {
-      id: 1,
-      label: "Barber",
-      value: "Barber",
-    },
-    {
-      id: 2,
-      label: "Carpenter",
-      value: "Carpenter",
-    },
-    {
-      id: 3,
-      label: "Shoe Maker",
-      value: "Shoe Maker",
-    },
-  ];
 
   return (
     <LinearGradient
@@ -354,33 +355,64 @@ const WizardForm = ({ route, navigation }: Props) => {
             {/* STEP 3 */}
             {step === 3 && (
               <View>
+                {/* Section heading */}
                 <Text style={styles.sectionTitle}>Location Details</Text>
 
+                {/* State Picker */}
                 <View style={styles.pickerContainer}>
                   <Picker
                     selectedValue={formData.state}
-                    onValueChange={(itemValue) =>
-                      handleChange("state", itemValue)
-                    }
+                    onValueChange={(itemValue) => {
+                      // Update state and clear the previous LGA together.
+                      setFormData((previousData) => ({
+                        ...previousData,
+                        state: itemValue,
+                        lga: "",
+                      }));
+                    }}
                   >
+                    {/* Default state option */}
                     <Picker.Item label="Select State" value="" />
-                    <Picker.Item label="Lagos" value="Lagos" />
-                    <Picker.Item label="Edo" value="Edo" />
-                    <Picker.Item label="Abuja" value="Abuja" />
-                    <Picker.Item label="Rivers" value="Rivers" />
+
+                    {/* Display all Nigerian states */}
+                    {nigeriaLocations.map((item) => (
+                      <Picker.Item
+                        key={item.state}
+                        label={item.state}
+                        value={item.state}
+                      />
+                    ))}
                   </Picker>
                 </View>
 
-                <TextInput
-                  label="Local Government Area"
-                  mode="outlined"
-                  value={formData.lga}
-                  onChangeText={(text) => handleChange("lga", text)}
-                  style={styles.input}
-                  outlineStyle={styles.inputOutline}
-                  theme={inputTheme}
-                />
+                {/* LGA Picker */}
+                <View style={styles.pickerContainer}>
+                  <Picker
+                    selectedValue={formData.lga}
+                    enabled={lgaList.length > 0}
+                    onValueChange={(itemValue) => {
+                      // Save the selected LGA.
+                      handleChange("lga", itemValue);
+                    }}
+                  >
+                    {/* Default LGA option */}
+                    <Picker.Item
+                      label={
+                        formData.state
+                          ? "Select Local Government Area"
+                          : "Select a state first"
+                      }
+                      value=""
+                    />
 
+                    {/* Display LGAs for the selected state */}
+                    {lgaList.map((lga) => (
+                      <Picker.Item key={lga} label={lga} value={lga} />
+                    ))}
+                  </Picker>
+                </View>
+
+                {/* Street Address */}
                 <TextInput
                   label="Street Address"
                   mode="outlined"

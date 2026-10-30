@@ -1,8 +1,9 @@
+import { ToastMess } from "@/src/utils/toast";
 import { Picker } from "@react-native-picker/picker";
 import { LinearGradient } from "expo-linear-gradient";
+import { Link, useRouter } from "expo-router";
 import * as React from "react";
 import {
-  Alert,
   KeyboardAvoidingView,
   Platform,
   StyleSheet,
@@ -12,7 +13,6 @@ import {
 } from "react-native";
 import { Button, TextInput } from "react-native-paper";
 import { api } from "../../config";
-import { Link } from "expo-router";
 
 export default function Register({ navigation }: any) {
   const [name, setName] = React.useState("");
@@ -20,7 +20,8 @@ export default function Register({ navigation }: any) {
   const [password, setPassword] = React.useState("");
   const [role, setRole] = React.useState("");
   const [loading, setLoading] = React.useState(false);
- 
+
+  const router = useRouter();
 
   const resetForm = () => {
     setName("");
@@ -49,19 +50,30 @@ export default function Register({ navigation }: any) {
 
       const data = await response.json();
       if (!response.ok) {
-        alert(data.message || "Registration failed");
+        ToastMess({
+          type: "error",
+          title: "Registration Failed",
+          content: data.message || "Please try again.",
+        });
       } else {
-        Alert.alert("Success", data.message);
+        ToastMess({
+          type: "success",
+          title: "Registration Successful",
+          content: data.message || "Registration Successful.",
+        });
         resetForm();
-        navigation.navigate("Login");
+        router.replace("/screen/Auth/LoginScreen");
       }
     } catch (err: any) {
-      Alert.alert("Error", err.message);
+      ToastMess({
+        type: "error",
+        title: "Something is wrong",
+        content: err.message || "Please try again.",
+      });
     } finally {
       setLoading(false);
     }
   };
-
 
   return (
     <LinearGradient
@@ -174,7 +186,10 @@ export default function Register({ navigation }: any) {
             <Text style={styles.loginText}>Already have an account?</Text>
 
             <TouchableOpacity>
-              <Link href="/screen/Auth/LoginScreen" style={styles.loginLink}> Login</Link>
+              <Link href="/screen/Auth/LoginScreen" style={styles.loginLink}>
+                {" "}
+                Login
+              </Link>
             </TouchableOpacity>
           </View>
         </View>

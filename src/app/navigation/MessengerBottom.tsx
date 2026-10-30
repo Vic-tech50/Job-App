@@ -4,7 +4,7 @@ import { createBottomTabNavigator } from "expo-router/js-tabs";
 import { StyleSheet, View } from "react-native";
 import FindFreelancers from "../(Messenger)/Hire";
 import ClientMessages from "../(Messenger)/Message";
-import ClientPayments from "../(Messenger)/Payment";
+import ClientPayments from "../screen/Messenger/Payment";
 import ClientProfile from "../(Messenger)/Profile";
 import ClientDashboard from "../screen/Messenger/Index";
 

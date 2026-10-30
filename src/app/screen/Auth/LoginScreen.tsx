@@ -1,3 +1,4 @@
+import { ToastMess } from "@/src/utils/toast";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { LinearGradient } from "expo-linear-gradient";
 import { Link, useRouter } from "expo-router";
@@ -63,7 +64,17 @@ export default function Login({ navigation }: any) {
       }
 
       if (!response.ok) {
-        Alert.alert("Error", data.message || "Login failed. Try again.");
+        // Alert.alert("Error", data.message || "Login failed. Try again.");
+        // Toast.show({
+        //   type: "error",
+        //   text1: "Login Failed",
+        //   text2: data.message || "Please try again.",
+        // });
+        ToastMess({
+          type: "error",
+          title: "Login Failed",
+          content: data.message || "Please try again.",
+        });
         return;
       }
 
@@ -73,7 +84,7 @@ export default function Login({ navigation }: any) {
         return;
       }
 
-      if (data.user.status !== 1) {
+      if (data.user.status !== 1 && data.user.role == "Worker") {
         Alert.alert("Success", data.message || "Login successful!");
         router.push({
           pathname: "/screen/Template/WizardFormScreen" as any,
@@ -86,12 +97,23 @@ export default function Login({ navigation }: any) {
         //   user: data.user,
         //   token: data.token,
         // });
-      } else {
+      } else if (data.user.status == 1 && data.user.role == "Worker") {
         await AsyncStorage.setItem("user", JSON.stringify(data.user));
         await AsyncStorage.setItem("token", data.token);
         Alert.alert("Success", data.message || "Login successful!");
         // navigation.navigate("MyTabs");
         router.replace("/(Worker)");
+      } else {
+        await AsyncStorage.setItem("user", JSON.stringify(data.user));
+        await AsyncStorage.setItem("token", data.token);
+
+        ToastMess({
+          type: "success",
+          title: "Login Successful",
+          content: data.message || "Login Successfull.",
+        });
+        // navigation.navigate("MyTabs");
+        router.replace("/(Messenger)");
       }
       console.log("Logged in user:", data.user);
     } catch (err: any) {

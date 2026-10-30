@@ -1,4 +1,6 @@
+import { MaterialCommunityIcons } from "@expo/vector-icons";
 import AsyncStorage from "@react-native-async-storage/async-storage";
+import { LinearGradient } from "expo-linear-gradient";
 import { useRouter } from "expo-router";
 import React from "react";
 import {
@@ -9,26 +11,38 @@ import {
   TouchableOpacity,
   View,
 } from "react-native";
-import { LinearGradient } from "expo-linear-gradient";
-import { MaterialCommunityIcons } from "@expo/vector-icons";
 
 export default function ClientProfile({ navigation }: any) {
+  const [user, setUser] = React.useState<any>(null);
 
-  // Inside your component:
-const router = useRouter();
+  React.useEffect(() => {
+    const loadUser = async () => {
+      try {
+        const storedUser = await AsyncStorage.getItem("user");
 
-const logout = async () => {
-  try {
-    // Remove the stored authentication data.
-    await AsyncStorage.multiRemove(["token", "user"]);
+        if (storedUser) {
+          const userData = JSON.parse(storedUser);
+          setUser(userData);
+        }
+      } catch (error) {
+        console.log("Error loading user:", error);
+      }
+    };
 
-    // Navigate to the login screen using Expo Router.
-    router.replace("/screen/Auth/LoginScreen");
-  } catch (error) {
-    // Log any errors that occur during logout.
-    console.log("Logout Error:", error);
-  }
-};
+    loadUser();
+  }, []);
+
+
+  const router = useRouter();
+
+  const logout = async () => {
+    try {
+      await AsyncStorage.multiRemove(["token", "user"]);
+      router.replace("/screen/Auth/LoginScreen");
+    } catch (error) {
+      console.log("Logout Error:", error);
+    }
+  };
 
   return (
     <LinearGradient
@@ -48,13 +62,9 @@ const logout = async () => {
             style={styles.avatar}
           />
 
-          <Text style={styles.name}>
-            Victor Okenyi
-          </Text>
+          <Text style={styles.name}>{user?.fullname}</Text>
 
-          <Text style={styles.email}>
-            victor@gmail.com
-          </Text>
+          <Text style={styles.email}>{user?.email}</Text>
 
           <View style={styles.badge}>
             <MaterialCommunityIcons
@@ -63,56 +73,38 @@ const logout = async () => {
               color="#fff"
             />
 
-            <Text style={styles.badgeText}>
-              Verified Client
-            </Text>
+            <Text style={styles.badgeText}>Verified Client</Text>
           </View>
         </View>
 
         {/* ACCOUNT STATS */}
         <View style={styles.statsRow}>
           <View style={styles.statCard}>
-            <Text style={styles.statNumber}>
-              18
-            </Text>
+            <Text style={styles.statNumber}>18</Text>
 
-            <Text style={styles.statLabel}>
-              Projects
-            </Text>
+            <Text style={styles.statLabel}>Projects</Text>
           </View>
 
           <View style={styles.statCard}>
-            <Text style={styles.statNumber}>
-              45
-            </Text>
+            <Text style={styles.statNumber}>45</Text>
 
-            <Text style={styles.statLabel}>
-              Freelancers
-            </Text>
+            <Text style={styles.statLabel}>Freelancers</Text>
           </View>
 
           <View style={styles.statCard}>
-            <Text style={styles.statNumber}>
-              $4.2K
-            </Text>
+            <Text style={styles.statNumber}>$4.2K</Text>
 
-            <Text style={styles.statLabel}>
-              Spent
-            </Text>
+            <Text style={styles.statLabel}>Spent</Text>
           </View>
         </View>
 
         {/* ACCOUNT SECTION */}
         <View style={styles.section}>
-          <Text style={styles.sectionTitle}>
-            Account
-          </Text>
+          <Text style={styles.sectionTitle}>Account</Text>
 
           <TouchableOpacity
             style={styles.menuCard}
-            onPress={() =>
-              navigation.navigate("EditClientProfile")
-            }
+            onPress={() => navigation.navigate("EditClientProfile")}
           >
             <View style={styles.menuLeft}>
               <View style={styles.iconBox}>
@@ -123,9 +115,7 @@ const logout = async () => {
                 />
               </View>
 
-              <Text style={styles.menuText}>
-                Edit Profile
-              </Text>
+              <Text style={styles.menuText}>Edit Profile</Text>
             </View>
 
             <MaterialCommunityIcons
@@ -145,9 +135,7 @@ const logout = async () => {
                 />
               </View>
 
-              <Text style={styles.menuText}>
-                Security
-              </Text>
+              <Text style={styles.menuText}>Security</Text>
             </View>
 
             <MaterialCommunityIcons
@@ -167,9 +155,7 @@ const logout = async () => {
                 />
               </View>
 
-              <Text style={styles.menuText}>
-                Notifications
-              </Text>
+              <Text style={styles.menuText}>Notifications</Text>
             </View>
 
             <MaterialCommunityIcons
@@ -182,9 +168,7 @@ const logout = async () => {
 
         {/* BUSINESS SECTION */}
         <View style={styles.section}>
-          <Text style={styles.sectionTitle}>
-            Business
-          </Text>
+          <Text style={styles.sectionTitle}>Business</Text>
 
           <TouchableOpacity style={styles.menuCard}>
             <View style={styles.menuLeft}>
@@ -196,9 +180,7 @@ const logout = async () => {
                 />
               </View>
 
-              <Text style={styles.menuText}>
-                Posted Projects
-              </Text>
+              <Text style={styles.menuText}>Posted Projects</Text>
             </View>
 
             <MaterialCommunityIcons
@@ -218,9 +200,7 @@ const logout = async () => {
                 />
               </View>
 
-              <Text style={styles.menuText}>
-                Payment Methods
-              </Text>
+              <Text style={styles.menuText}>Payment Methods</Text>
             </View>
 
             <MaterialCommunityIcons
@@ -240,9 +220,7 @@ const logout = async () => {
                 />
               </View>
 
-              <Text style={styles.menuText}>
-                Invoices
-              </Text>
+              <Text style={styles.menuText}>Invoices</Text>
             </View>
 
             <MaterialCommunityIcons
@@ -255,15 +233,9 @@ const logout = async () => {
 
         {/* LOGOUT */}
         <TouchableOpacity style={styles.logoutBtn} onPress={logout}>
-          <MaterialCommunityIcons
-            name="logout"
-            size={22}
-            color="#fff"
-          />
+          <MaterialCommunityIcons name="logout" size={22} color="#fff" />
 
-          <Text style={styles.logoutText}>
-            Logout
-          </Text>
+          <Text style={styles.logoutText}>Logout</Text>
         </TouchableOpacity>
       </ScrollView>
     </LinearGradient>
@@ -304,6 +276,7 @@ const styles = StyleSheet.create({
   email: {
     color: "#CBD5E1",
     marginTop: 5,
+    // textTransform: "capitalize"
   },
 
   badge: {
