@@ -14,24 +14,22 @@ import {
 
 export default function ClientProfile({ navigation }: any) {
   const [user, setUser] = React.useState<any>(null);
+  const loadUser = async () => {
+    try {
+      const storedUser = await AsyncStorage.getItem("user");
+
+      if (storedUser) {
+        const userData = JSON.parse(storedUser);
+        setUser(userData);
+      }
+    } catch (error) {
+      console.log("Error loading user:", error);
+    }
+  };
 
   React.useEffect(() => {
-    const loadUser = async () => {
-      try {
-        const storedUser = await AsyncStorage.getItem("user");
-
-        if (storedUser) {
-          const userData = JSON.parse(storedUser);
-          setUser(userData);
-        }
-      } catch (error) {
-        console.log("Error loading user:", error);
-      }
-    };
-
     loadUser();
   }, []);
-
 
   const router = useRouter();
 
@@ -104,7 +102,7 @@ export default function ClientProfile({ navigation }: any) {
 
           <TouchableOpacity
             style={styles.menuCard}
-            onPress={() => navigation.navigate("EditClientProfile")}
+            onPress={() => router.push("/screen/Worker/EditProfile")}
           >
             <View style={styles.menuLeft}>
               <View style={styles.iconBox}>
@@ -125,7 +123,10 @@ export default function ClientProfile({ navigation }: any) {
             />
           </TouchableOpacity>
 
-          <TouchableOpacity style={styles.menuCard}>
+          <TouchableOpacity
+            style={styles.menuCard}
+            onPress={() => router.push("/screen/Worker/EditSecurity")}
+          >
             <View style={styles.menuLeft}>
               <View style={styles.iconBox}>
                 <MaterialCommunityIcons

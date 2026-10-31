@@ -1,10 +1,33 @@
+
+import { ToastMess } from "@/src/utils/toast";
 import AsyncStorage from "@react-native-async-storage/async-storage";
+import { useRouter } from "expo-router";
 import React, { useEffect, useState } from "react";
-import { Alert, Image, ScrollView, StyleSheet, Text, View } from "react-native";
+
+import {
+  ActivityIndicator,
+  Image,
+  KeyboardAvoidingView,
+  Platform,
+  ScrollView,
+  StyleSheet,
+  Text,
+  TouchableOpacity,
+  View,
+} from "react-native";
+
 import { Button, RadioButton, TextInput } from "react-native-paper";
+import * as ImagePicker from "expo-image-picker";
+import { MaterialCommunityIcons } from "@expo/vector-icons";
+
 import { api } from "../../config";
 
-export default function EditProfile({ route }: any) {
+const DEFAULT_AVATAR = "https://i.pravatar.cc/300?img=12";
+
+export default function EditProfile() {
+  const router = useRouter();
+
+  // User information
   const [id, setId] = useState("");
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
@@ -13,196 +36,496 @@ export default function EditProfile({ route }: any) {
   const [lga, setLga] = useState("");
   const [dateOfBirth, setDateOfBirth] = useState("");
   const [street, setStreet] = useState("");
-  const [checked, setChecked] = React.useState("");
+  const [checked, setChecked] = useState("");
+
+  // Profile picture
+  const [profileImage, setProfileImage] = useState<string | null>(null);
+  const [originalImage, setOriginalImage] = useState<string | null>(null);
+
+  // Loading states
   const [loading, setLoading] = useState(true);
+  const [saving, setSaving] = useState(false);
+
+  // Load existing user information
+  const loadUser = async () => {
+    try {
+      const storedUser = await AsyncStorage.getItem("user");
+
+      if (storedUser) {
+        const user = JSON.parse(storedUser);
+
+        setId(String(user.id || ""));
+        setName(user.fullname || "");
+        setEmail(user.email || "");
+        setPhone(user.phone || user.phoneNumber || "");
+        setState(user.state || "");
+        setLga(user.lga || "");
+        setStreet(user.street || user.streetAddress || "");
+        setChecked(user.gender || "");
+        setDateOfBirth(user.dob || user.dateOfBirth || "");
+
+        // Support common profile image field names
+        const image =
+          user.profile_picture ||
+          user.avatar ||
+          user.photo ||
+          null;
+
+        setProfileImage(image);
+        setOriginalImage(image);
+      }
+    } catch (error) {
+      console.log("Error loading user:", error);
+    } finally {
+      setLoading(false);
+    }
+  };
 
   useEffect(() => {
-    const loadUser = async () => {
-      try {
-        const storedUser = await AsyncStorage.getItem("user");
-
-        if (storedUser) {
-          const user = JSON.parse(storedUser);
-
-          setName(user.fullname || "");
-          setId(user.id || "");
-          setEmail(user.email || "");
-          setPhone(user.phone || "");
-          setState(user.state || "");
-          setLga(user.lga || "");
-          setStreet(user.street || "");
-          setChecked(user.gender || "");
-          setDateOfBirth(user.dob || "");
-        }
-      } catch (error) {
-        console.log("Error loading user:", error);
-      } finally {
-        setLoading(false);
-      }
-    };
-
     loadUser();
   }, []);
 
+  // Select profile picture from gallery
+  const changePhoto = async () => {
+    try {
+      const permission =
+        await ImagePicker.requestMediaLibraryPermissionsAsync();
+
+      if (!permission.granted) {
+        ToastMess({
+          type: "error",
+          title: "Permission Required",
+          content: "Please allow access to your photo library.",
+        });
+        return;
+      }
+
+      const result = await ImagePicker.launchImageLibraryAsync({
+        mediaTypes: ["images"],
+        allowsEditing: true,
+        aspect: [1, 1],
+        quality: 0.8,
+      });
+
+      if (!result.canceled && result.assets.length > 0) {
+        setProfileImage(result.assets[0].uri);
+      }
+    } catch (error) {
+      console.log("Image picker error:", error);
+
+      ToastMess({
+        type: "error",
+        title: "Image Error",
+        content: "Unable to select your profile picture.",
+      });
+    }
+  };
+
+  // Restore the original picture before saving
+  const cancelPhotoChange = () => {
+    setProfileImage(originalImage);
+  };
+
+  // Update profile information
+  const updateData = async () => {
+    if (!name.trim() || !email.trim()) {
+      ToastMess({
+        type: "error",
+        title: "Missing Information",
+        content: "Full name and email are required.",
+      });
+      return;
+    }
+
+    if (!id) {
+      ToastMess({
+        type: "error",
+        title: "User Not Found",
+        content: "Please log in again.",
+      });
+      return;
+    }
+
+    setSaving(true);
+
+    try {
+      const token = await AsyncStorage.getItem("token");
+
+      // FormData allows text fields and images in one request
+      const formData = new FormData();
+
+      formData.append("id", id);
+      formData.append("fullname", name.trim());
+      formData.append("email", email.trim());
+      formData.append("phoneNumber", phone);
+      formData.append("dateOfBirth", dateOfBirth);
+      formData.append("gender", checked);
+      formData.append("state", state);
+      formData.append("lga", lga);
+      formData.append("streetAddress", street);
+
+      // Only upload when a new local image has been selected
+      if (
+        profileImage &&
+        profileImage !== originalImage &&
+        !profileImage.startsWith("http")
+      ) {
+        const filename =
+          profileImage.split("/").pop() || "profile.jpg";
+
+        const extension = filename.split(".").pop()?.toLowerCase();
+
+        const mimeType =
+          extension === "png"
+            ? "image/png"
+            : extension === "webp"
+            ? "image/webp"
+            : "image/jpeg";
+
+        formData.append(
+          "profile_picture",
+          {
+            uri: profileImage,
+            name: filename,
+            type: mimeType,
+          } as any
+        );
+      }
+
+      const response = await fetch(`${api}/users/updateprofile`, {
+        method: "POST",
+        headers: {
+          ...(token ? { Authorization: `Bearer ${token}` } : {}),
+          // Do not manually set Content-Type for FormData.
+          // React Native must add the multipart boundary.
+        },
+        body: formData,
+      });
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        ToastMess({
+          type: "error",
+          title: "Update Failed",
+          content: data.message || "Failed to update profile.",
+        });
+        return;
+      }
+
+      // Update locally stored user information
+      const storedUser = await AsyncStorage.getItem("user");
+      const existingUser = storedUser ? JSON.parse(storedUser) : {};
+
+      const updatedUser = {
+        ...existingUser,
+        id,
+        fullname: name,
+        email,
+        phone,
+        phoneNumber: phone,
+        state,
+        lga,
+        street,
+        streetAddress: street,
+        gender: checked,
+        dob: dateOfBirth,
+        dateOfBirth,
+        ...(data.user || {}),
+      };
+
+      await AsyncStorage.setItem("user", JSON.stringify(updatedUser));
+
+      ToastMess({
+        type: "success",
+        title: "Profile Updated",
+        content: data.message || "Your profile has been updated.",
+      });
+
+      router.back();
+    } catch (error: any) {
+      console.log("Profile update error:", error);
+
+      ToastMess({
+        type: "error",
+        title: "Something Went Wrong",
+        content: error?.message || "Unable to update your profile.",
+      });
+    } finally {
+      setSaving(false);
+    }
+  };
+
   if (loading) {
     return (
-      <View style={{ flex: 1, justifyContent: "center", alignItems: "center" }}>
-        <Text>Loading profile...</Text>
+      <View style={styles.loader}>
+        <ActivityIndicator size="large" color="#2563EB" />
+        <Text style={styles.loadingText}>Loading your profile...</Text>
       </View>
     );
   }
 
-  const updateData = async () => {
-    try {
-      const response = await fetch(`${api}/users/updateprofile`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          id: id,
-          fullname: name,
-          email: email,
-          phoneNumber: phone,
-          dateOfBirth: dateOfBirth,
-          gender: checked,
-          state: state,
-          lga: lga,
-          streetAddress: street,
-        }),
-      });
-
-      const data = await response.json();
-      if (!response.ok) {
-        alert(data.message || "Failed to update profile");
-      } else {
-        Alert.alert("Success", data.message);
-
-        console.log("Updated user:", data.user);
-      }
-    } catch (err: any) {
-      Alert.alert("Error", err.message);
-    }
-  };
-
   return (
-    <ScrollView contentContainerStyle={styles.scroll}>
-      {/* HEADER */}
-      <Text style={styles.title}>Edit Profile</Text>
-      <Text style={styles.subtitle}>Update your freelancer information</Text>
+    <KeyboardAvoidingView
+      style={styles.container}
+      behavior={Platform.OS === "ios" ? "padding" : undefined}
+    >
+      <ScrollView
+        contentContainerStyle={styles.scroll}
+        showsVerticalScrollIndicator={false}
+        keyboardShouldPersistTaps="handled"
+      >
+        {/* HEADER */}
+        <View style={styles.header}>
+          <TouchableOpacity
+            style={styles.backButton}
+            onPress={() => router.back()}
+          >
+            <MaterialCommunityIcons
+              name="arrow-left"
+              size={23}
+              color="#0F172A"
+            />
+          </TouchableOpacity>
 
-      {/* PROFILE IMAGE */}
-      <View style={styles.imageBox}>
-        <Image
-          source={{ uri: "https://i.pravatar.cc/150?img=12" }}
-          style={styles.avatar}
-        />
+          <Text style={styles.title}>Edit Profile</Text>
+          <Text style={styles.subtitle}>
+            Manage your personal information and how people see you.
+          </Text>
+        </View>
 
-        <Text style={styles.changePhoto}>Change Profile Photo</Text>
-      </View>
+        {/* PROFILE PICTURE CARD */}
+        <View style={styles.profileCard}>
+          <View style={styles.avatarWrapper}>
+            <Image
+              source={{ uri: profileImage || DEFAULT_AVATAR }}
+              style={styles.avatar}
+            />
 
-      {/* FORM CARD */}
-      <View style={styles.card}>
-        <TextInput
-          label="Full Name"
-          value={name}
-          onChangeText={setName}
-          style={styles.input}
-          mode="outlined"
-          textColor="black"
-          outlineColor="blue"
-          outlineStyle={{ borderRadius: 5, borderColor: "#2563EB" }}
-        />
+            <TouchableOpacity
+              style={styles.cameraButton}
+              onPress={changePhoto}
+              activeOpacity={0.8}
+            >
+              <MaterialCommunityIcons
+                name="camera"
+                size={19}
+                color="#FFFFFF"
+              />
+            </TouchableOpacity>
+          </View>
 
-        <TextInput
-          label="Email"
-          value={email}
-          onChangeText={setEmail}
-          style={styles.input}
-          mode="outlined"
-          textColor="black"
-          outlineColor="blue"
-          outlineStyle={{ borderRadius: 5, borderColor: "#2563EB" }}
-        />
+          <Text style={styles.profileName}>
+            {name || "Your Name"}
+          </Text>
 
-        <TextInput
-          label="Phone Number"
-          keyboardType="phone-pad"
-          value={phone}
-          onChangeText={setPhone}
-          style={styles.input}
-          mode="outlined"
-          textColor="black"
-          outlineColor="blue"
-          outlineStyle={{ borderRadius: 5, borderColor: "#2563EB" }}
-        />
+          <Text style={styles.profileEmail}>
+            {email || "Your email address"}
+          </Text>
 
-        <TextInput
-          label="Date of Birth (YYYY-MM-DD)"
-          keyboardType="phone-pad"
-          value={dateOfBirth}
-          onChangeText={setDateOfBirth}
-          style={styles.input}
-          mode="outlined"
-          textColor="black"
-          outlineColor="blue"
-          outlineStyle={{ borderRadius: 5, borderColor: "#2563EB" }}
-        />
+          <TouchableOpacity
+            style={styles.changePhotoButton}
+            onPress={changePhoto}
+          >
+            <MaterialCommunityIcons
+              name="image-edit-outline"
+              size={17}
+              color="#2563EB"
+            />
+            <Text style={styles.changePhotoText}>
+              Change Profile Picture
+            </Text>
+          </TouchableOpacity>
 
-        <TextInput
-          label="State Of Residence"
-          value={state}
-          onChangeText={setState}
-          style={styles.input}
-          mode="outlined"
-          textColor="black"
-          outlineColor="blue"
-          outlineStyle={{ borderRadius: 5, borderColor: "#2563EB" }}
-        />
+          {profileImage !== originalImage && (
+            <TouchableOpacity
+              onPress={cancelPhotoChange}
+              style={styles.cancelPhoto}
+            >
+              <Text style={styles.cancelPhotoText}>
+                Cancel photo change
+              </Text>
+            </TouchableOpacity>
+          )}
 
-        <TextInput
-          label="Local Government Area"
-          value={lga}
-          onChangeText={setLga}
-          style={styles.input}
-          mode="outlined"
-          textColor="black"
-          outlineColor="blue"
-          outlineStyle={{ borderRadius: 5, borderColor: "#2563EB" }}
-        />
+          <Text style={styles.photoHint}>
+            Choose a clear picture of yourself.
+          </Text>
+        </View>
 
-        <TextInput
-          label="Street Address"
-          value={street}
-          onChangeText={setStreet}
-          style={styles.input}
-          mode="outlined"
-          textColor="black"
-          outlineColor="blue"
-          outlineStyle={{ borderRadius: 5, borderColor: "#2563EB" }}
-        />
+        {/* PERSONAL INFORMATION */}
+        <View style={styles.card}>
+          <View style={styles.sectionHeader}>
+            <View style={styles.sectionIcon}>
+              <MaterialCommunityIcons
+                name="account-outline"
+                size={21}
+                color="#2563EB"
+              />
+            </View>
 
-        {/* Gender */}
-        <View style={styles.radioCard}>
-          <Text style={styles.genderTitle}>Select Gender</Text>
+            <View>
+              <Text style={styles.sectionTitle}>
+                Personal Information
+              </Text>
+              <Text style={styles.sectionSubtitle}>
+                Your basic account details
+              </Text>
+            </View>
+          </View>
+
+          <TextInput
+            label="Full Name"
+            value={name}
+            onChangeText={setName}
+            mode="outlined"
+            style={styles.input}
+            outlineColor="#E2E8F0"
+            activeOutlineColor="#2563EB"
+            left={<TextInput.Icon icon="account-outline" />}
+          />
+
+          <TextInput
+            label="Email Address"
+            value={email}
+            onChangeText={setEmail}
+            keyboardType="email-address"
+            autoCapitalize="none"
+            mode="outlined"
+            style={styles.input}
+            outlineColor="#E2E8F0"
+            activeOutlineColor="#2563EB"
+            left={<TextInput.Icon icon="email-outline" />}
+          />
+
+          <TextInput
+            label="Phone Number"
+            value={phone}
+            onChangeText={setPhone}
+            keyboardType="phone-pad"
+            mode="outlined"
+            style={styles.input}
+            outlineColor="#E2E8F0"
+            activeOutlineColor="#2563EB"
+            left={<TextInput.Icon icon="phone-outline" />}
+          />
+
+          <TextInput
+            label="Date of Birth (YYYY-MM-DD)"
+            value={dateOfBirth}
+            onChangeText={setDateOfBirth}
+            mode="outlined"
+            style={styles.input}
+            outlineColor="#E2E8F0"
+            activeOutlineColor="#2563EB"
+            left={<TextInput.Icon icon="calendar-outline" />}
+          />
+        </View>
+
+        {/* LOCATION INFORMATION */}
+        <View style={styles.card}>
+          <View style={styles.sectionHeader}>
+            <View style={styles.sectionIcon}>
+              <MaterialCommunityIcons
+                name="map-marker-outline"
+                size={21}
+                color="#2563EB"
+              />
+            </View>
+
+            <View>
+              <Text style={styles.sectionTitle}>
+                Location Information
+              </Text>
+              <Text style={styles.sectionSubtitle}>
+                Where you are currently based
+              </Text>
+            </View>
+          </View>
+
+          <TextInput
+            label="State of Residence"
+            value={state}
+            onChangeText={setState}
+            mode="outlined"
+            style={styles.input}
+            outlineColor="#E2E8F0"
+            activeOutlineColor="#2563EB"
+            left={<TextInput.Icon icon="map-marker-outline" />}
+          />
+
+          <TextInput
+            label="Local Government Area"
+            value={lga}
+            onChangeText={setLga}
+            mode="outlined"
+            style={styles.input}
+            outlineColor="#E2E8F0"
+            activeOutlineColor="#2563EB"
+            left={<TextInput.Icon icon="map-outline" />}
+          />
+
+          <TextInput
+            label="Street Address"
+            value={street}
+            onChangeText={setStreet}
+            mode="outlined"
+            multiline
+            numberOfLines={2}
+            style={styles.input}
+            outlineColor="#E2E8F0"
+            activeOutlineColor="#2563EB"
+            left={<TextInput.Icon icon="home-outline" />}
+          />
+        </View>
+
+        {/* GENDER */}
+        <View style={styles.card}>
+          <View style={styles.sectionHeader}>
+            <View style={styles.sectionIcon}>
+              <MaterialCommunityIcons
+                name="account-group-outline"
+                size={21}
+                color="#2563EB"
+              />
+            </View>
+
+            <View>
+              <Text style={styles.sectionTitle}>Gender</Text>
+              <Text style={styles.sectionSubtitle}>
+                Select your gender
+              </Text>
+            </View>
+          </View>
 
           <RadioButton.Group
-            onValueChange={(value) => setChecked(value)}
+            onValueChange={setChecked}
             value={checked}
           >
-            <View style={styles.radioRow}>
-              <View style={styles.radioItem}>
-                <RadioButton value="Male" color="#2563EB" />
-                <Text>Male</Text>
-              </View>
-
-              <View style={styles.radioItem}>
-                <RadioButton value="Female" color="#2563EB" />
-                <Text>Female</Text>
-              </View>
-
-              <View style={styles.radioItem}>
-                <RadioButton value="Other" color="#2563EB" />
-                <Text>Other</Text>
-              </View>
+            <View style={styles.genderContainer}>
+              {["Male", "Female", "Other"].map((gender) => (
+                <TouchableOpacity
+                  key={gender}
+                  style={[
+                    styles.genderOption,
+                    checked === gender && styles.genderSelected,
+                  ]}
+                  onPress={() => setChecked(gender)}
+                >
+                  <RadioButton
+                    value={gender}
+                    color="#2563EB"
+                  />
+                  <Text
+                    style={[
+                      styles.genderText,
+                      checked === gender && styles.genderTextSelected,
+                    ]}
+                  >
+                    {gender}
+                  </Text>
+                </TouchableOpacity>
+              ))}
             </View>
           </RadioButton.Group>
         </View>
@@ -211,95 +534,246 @@ export default function EditProfile({ route }: any) {
         <Button
           mode="contained"
           buttonColor="#2563EB"
-          textColor="white"
-          style={styles.button}
+          textColor="#FFFFFF"
+          style={styles.saveButton}
+          contentStyle={styles.saveButtonContent}
+          loading={saving}
+          disabled={saving}
           onPress={updateData}
+          icon="content-save-outline"
         >
-          Save Changes
+          {saving ? "Saving Changes..." : "Save Changes"}
         </Button>
-      </View>
-    </ScrollView>
+
+        <Text style={styles.bottomText}>
+          Keep your profile information accurate and up to date.
+        </Text>
+      </ScrollView>
+    </KeyboardAvoidingView>
   );
 }
 
 const styles = StyleSheet.create({
   container: {
     flex: 1,
+    backgroundColor: "#F1F5F9",
   },
 
   scroll: {
     padding: 20,
-    paddingTop: 60,
+    paddingTop: 45,
+    paddingBottom: 50,
+  },
+
+  loader: {
+    flex: 1,
+    backgroundColor: "#F8FAFC",
+    alignItems: "center",
+    justifyContent: "center",
+  },
+
+  loadingText: {
+    color: "#64748B",
+    marginTop: 12,
+    fontSize: 14,
+  },
+
+  header: {
+    marginBottom: 25,
+  },
+
+  backButton: {
+    width: 43,
+    height: 43,
+    backgroundColor: "#FFFFFF",
+    borderRadius: 13,
+    alignItems: "center",
+    justifyContent: "center",
+    marginBottom: 20,
   },
 
   title: {
-    fontSize: 32,
-    fontWeight: "bold",
-    color: "#000000",
+    fontSize: 29,
+    fontWeight: "800",
+    color: "#0F172A",
+    marginBottom: 7,
   },
 
   subtitle: {
-    color: "#94A3B8",
-    marginBottom: 20,
+    fontSize: 14,
+    lineHeight: 22,
+    color: "#64748B",
   },
 
-  imageBox: {
+  profileCard: {
+    backgroundColor: "#FFFFFF",
+    borderRadius: 22,
+    padding: 23,
     alignItems: "center",
     marginBottom: 20,
+    borderWidth: 1,
+    borderColor: "#E2E8F0",
+  },
+
+  avatarWrapper: {
+    position: "relative",
+    marginBottom: 14,
   },
 
   avatar: {
-    width: 110,
-    height: 110,
-    borderRadius: 55,
-    borderWidth: 3,
-    borderColor: "#2563EB",
+    width: 112,
+    height: 112,
+    borderRadius: 56,
+    borderWidth: 4,
+    borderColor: "#DBEAFE",
+    backgroundColor: "#E2E8F0",
   },
 
-  changePhoto: {
+  cameraButton: {
+    position: "absolute",
+    right: 0,
+    bottom: 2,
+    width: 37,
+    height: 37,
+    borderRadius: 19,
+    backgroundColor: "#2563EB",
+    alignItems: "center",
+    justifyContent: "center",
+    borderWidth: 3,
+    borderColor: "#FFFFFF",
+  },
+
+  profileName: {
+    fontSize: 19,
+    fontWeight: "800",
+    color: "#0F172A",
+    marginBottom: 4,
+  },
+
+  profileEmail: {
+    fontSize: 13,
+    color: "#64748B",
+    marginBottom: 16,
+  },
+
+  changePhotoButton: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    backgroundColor: "#EFF6FF",
+    paddingHorizontal: 17,
+    paddingVertical: 11,
+    borderRadius: 12,
+    gap: 8,
+  },
+
+  changePhotoText: {
     color: "#2563EB",
-    marginTop: 8,
+    fontWeight: "700",
+    fontSize: 13,
+  },
+
+  cancelPhoto: {
+    marginTop: 12,
+  },
+
+  cancelPhotoText: {
+    color: "#DC2626",
+    fontSize: 12,
     fontWeight: "600",
+  },
+
+  photoHint: {
+    color: "#94A3B8",
+    fontSize: 11,
+    marginTop: 13,
   },
 
   card: {
-    backgroundColor: "#fff",
+    backgroundColor: "#FFFFFF",
+    borderRadius: 20,
     padding: 18,
-    borderRadius: 18,
+    marginBottom: 18,
+    borderWidth: 1,
+    borderColor: "#E2E8F0",
   },
 
-  input: {
-    marginBottom: 12,
-    backgroundColor: "#fff",
-    // color: "#0F172A",
+  sectionHeader: {
+    flexDirection: "row",
+    alignItems: "center",
+    marginBottom: 22,
+    gap: 12,
   },
 
-  button: {
-    marginTop: 10,
-    paddingVertical: 5,
+  sectionIcon: {
+    width: 43,
+    height: 43,
+    backgroundColor: "#EFF6FF",
+    borderRadius: 13,
+    alignItems: "center",
+    justifyContent: "center",
   },
 
-  radioCard: {
-    backgroundColor: "#F8FAFC",
-    padding: 16,
-    borderRadius: 16,
-    marginTop: 5,
-  },
-
-  genderTitle: {
+  sectionTitle: {
     fontSize: 16,
-    fontWeight: "600",
-    marginBottom: 10,
+    fontWeight: "800",
     color: "#0F172A",
   },
 
-  radioRow: {
-    flexDirection: "row",
-    justifyContent: "space-between",
+  sectionSubtitle: {
+    fontSize: 12,
+    color: "#94A3B8",
+    marginTop: 3,
   },
 
-  radioItem: {
+  input: {
+    backgroundColor: "#FFFFFF",
+    marginBottom: 14,
+    fontSize: 14,
+  },
+
+  genderContainer: {
+    gap: 10,
+  },
+
+  genderOption: {
     flexDirection: "row",
     alignItems: "center",
+    borderWidth: 1,
+    borderColor: "#E2E8F0",
+    borderRadius: 12,
+    paddingVertical: 5,
+    paddingHorizontal: 8,
   },
-});
+
+  genderSelected: {
+    borderColor: "#2563EB",
+    backgroundColor: "#EFF6FF",
+  },
+
+  genderText: {
+    color: "#475569",
+    fontSize: 14,
+  },
+
+  genderTextSelected: {
+    color: "#1D4ED8",
+    fontWeight: "700",
+  },
+
+  saveButton: {
+    borderRadius: 13,
+    marginTop: 5,
+  },
+
+  saveButtonContent: {
+    height: 53,
+  },
+
+  bottomText: {
+    textAlign: "center",
+    fontSize: 12,
+    color: "#94A3B8",
+    marginTop: 18,
+  },
+})
