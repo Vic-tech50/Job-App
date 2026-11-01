@@ -14,6 +14,7 @@ import { MaterialCommunityIcons } from "@expo/vector-icons";
 import { LinearGradient } from "expo-linear-gradient";
 import { ActivityIndicator, TextInput } from "react-native-paper";
 
+import { useRouter } from "expo-router";
 import { api } from "../config";
 
 // Worker type.
@@ -51,6 +52,8 @@ export default function FindFreelancers({ navigation }: any) {
 
   // Error state.
   const [error, setError] = useState("");
+
+  const router = useRouter();
 
   // Fetch workers from backend.
   const getWorkerData = useCallback(async () => {
@@ -97,7 +100,10 @@ export default function FindFreelancers({ navigation }: any) {
           : typeof worker.skills === "string"
             ? worker.skills.split(",").map((skill: string) => skill.trim())
             : [],
-        location:[worker.street, worker.lga, worker.state].filter(Boolean).join(", ") || "Location unavailable",
+        location:
+          [worker.street, worker.lga, worker.state]
+            .filter(Boolean)
+            .join(", ") || "Location unavailable",
 
         rating: Number(worker.rating || 0),
 
@@ -131,6 +137,17 @@ export default function FindFreelancers({ navigation }: any) {
     getWorkerData();
   }, [getWorkerData]);
 
+  // Navigate to the selected artisan's profile.
+  const openFreelancer = (item: Worker) => {
+    router.push({
+      pathname: "/screen/Messenger/workerDetails",
+      params: {
+        id: String(item.id),
+        freelancer: JSON.stringify(item),
+      },
+    });
+  };
+
   // Filter workers dynamically.
   const filteredFreelancers = useMemo(() => {
     return workers.filter((worker) => {
@@ -159,11 +176,7 @@ export default function FindFreelancers({ navigation }: any) {
     <TouchableOpacity
       style={styles.card}
       activeOpacity={0.9}
-      onPress={() =>
-        navigation.navigate("FreelancerDetails", {
-          freelancer: item,
-        })
-      }
+      onPress={() => openFreelancer(item)}
     >
       {/* Worker information */}
       <View style={styles.topRow}>
@@ -210,11 +223,7 @@ export default function FindFreelancers({ navigation }: any) {
 
         <TouchableOpacity
           style={styles.hireBtn}
-          onPress={() =>
-            navigation.navigate("FreelancerDetails", {
-              freelancer: item,
-            })
-          }
+          onPress={() => openFreelancer(item)}
         >
           <Text style={styles.hireBtnText}>Hire Now</Text>
         </TouchableOpacity>

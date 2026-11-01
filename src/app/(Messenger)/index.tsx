@@ -1,245 +1,474 @@
-import { HelloWave } from "@/components/ui/hello-wave";
-import { MaterialCommunityIcons } from "@expo/vector-icons";
-import AsyncStorage from "@react-native-async-storage/async-storage";
-import { LinearGradient } from "expo-linear-gradient";
-import { useRouter } from "expo-router";
-import React from "react";
+import { useEffect, useState } from "react";
 import {
+  ActivityIndicator,
+  Image,
   ScrollView,
   StyleSheet,
   Text,
+  TextInput,
   TouchableOpacity,
   View,
+  Platform
 } from "react-native";
 
-export default function ClientDashboard({ navigation }: any) {
-  const [user, setUser] = React.useState<any>(null);
+import { MaterialCommunityIcons } from "@expo/vector-icons";
+import AsyncStorage from "@react-native-async-storage/async-storage";
+import { useRouter } from "expo-router";
 
+// Import your API configuration.
+import { api } from "../config";
+
+// Service categories.
+const categories = [
+  { id: "1", name: "Plumbing", icon: "wrench" },
+  { id: "2", name: "Electrical", icon: "lightning-bolt" },
+  { id: "3", name: "Carpentry", icon: "hammer" },
+  { id: "4", name: "Painting", icon: "format-paint" },
+  { id: "5", name: "Cleaning", icon: "broom" },
+  { id: "6", name: "AC Repair", icon: "air-conditioner" },
+  { id: "7", name: "Masonry", icon: "wall" },
+  { id: "8", name: "More", icon: "dots-horizontal" },
+];
+
+// Sample artisan data.
+// Replace this with data from your backend.
+const sampleArtisans = [
+  {
+    id: "1",
+    name: "Emeka Okafor",
+    occupation: "Professional Plumber",
+    rating: 4.9,
+    reviews: 28,
+    location: "Enugu",
+    image: "https://i.pravatar.cc/300?img=12",
+    available: true,
+  },
+  {
+    id: "2",
+    name: "Chinedu James",
+    occupation: "Electrical Technician",
+    rating: 4.8,
+    reviews: 19,
+    location: "Enugu",
+    image: "https://i.pravatar.cc/300?img=13",
+    available: true,
+  },
+  {
+    id: "3",
+    name: "Daniel Peter",
+    occupation: "Furniture Carpenter",
+    rating: 4.7,
+    reviews: 35,
+    location: "Nsukka",
+    image: "https://i.pravatar.cc/300?img=14",
+    available: false,
+  },
+];
+
+export default function ClientHome() {
   const router = useRouter();
 
-  React.useEffect(() => {
+  const [user, setUser] = useState<any>(null);
+  const [search, setSearch] = useState("");
+  const [selectedCategory, setSelectedCategory] = useState("All");
+  const [artisans, setArtisans] = useState(sampleArtisans);
+  const [loading, setLoading] = useState(false);
+
+  // Load client details.
+  useEffect(() => {
     const loadUser = async () => {
       try {
         const storedUser = await AsyncStorage.getItem("user");
 
         if (storedUser) {
-          const userData = JSON.parse(storedUser);
-          setUser(userData);
+          setUser(JSON.parse(storedUser));
         }
       } catch (error) {
-        console.log("Error loading user:", error);
+        console.log("Unable to load user:", error);
       }
     };
 
     loadUser();
   }, []);
-  const recentProjects = [
-    {
-      id: 1,
-      title: "Mobile App UI Design",
-      freelancer: "Victor Okenyi",
-      status: "In Progress",
-      budget: "$500",
-    },
-    {
-      id: 2,
-      title: "Laravel API Development",
-      freelancer: "John Dev",
-      status: "Pending Review",
-      budget: "$850",
-    },
-  ];
+
+  // Fetch artisans from your backend.
+  // Adjust the endpoint to match your Laravel API.
+  const fetchArtisans = async () => {
+    try {
+      setLoading(true);
+
+      const token = await AsyncStorage.getItem("token");
+
+      const response = await fetch(`${api}/artisans`, {
+        method: "GET",
+        headers: {
+          Accept: "application/json",
+          ...(token ? { Authorization: `Bearer ${token}` } : {}),
+        },
+      });
+
+      if (!response.ok) {
+        throw new Error("Could not load artisans");
+      }
+
+      const data = await response.json();
+
+      // Adjust this mapping to your API response structure.
+      if (Array.isArray(data)) {
+        setArtisans(data);
+      } else if (Array.isArray(data.artisans)) {
+        setArtisans(data.artisans);
+      }
+    } catch (error) {
+      console.log("Artisan loading error:", error);
+      // Keep sample data visible if the API is unavailable.
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchArtisans();
+  }, []);
+
+  // Filter artisans based on search and category.
+  const filteredArtisans = artisans.filter((artisan: any) => {
+    const searchMatch =
+      artisan.name?.toLowerCase().includes(search.toLowerCase()) ||
+      artisan.occupation?.toLowerCase().includes(search.toLowerCase());
+
+    const categoryMatch =
+      selectedCategory === "All" ||
+      artisan.occupation
+        ?.toLowerCase()
+        .includes(selectedCategory.toLowerCase());
+
+    return searchMatch && categoryMatch;
+  });
+
+  // Open artisan details.
+  const openArtisan = (artisan: any) => {
+    // router.push({
+    //   pathname: "/client/artisan/[id]",
+    //   params: { id: String(artisan.id) },
+    // });
+  };
 
   return (
-    <LinearGradient
-      colors={["#0F172A", "#1E293B", "#334155"]}
-      style={styles.container}
-    >
+    <View style={styles.container}>
       <ScrollView
-        contentContainerStyle={styles.scroll}
         showsVerticalScrollIndicator={false}
+        contentContainerStyle={styles.scroll}
       >
         {/* HEADER */}
         <View style={styles.header}>
           <View>
-            <Text style={styles.welcome}>
-              Welcome Back <HelloWave size="sm"></HelloWave>
+            <Text style={styles.greeting}>GOOD DAY 👋</Text>
+
+            <Text style={styles.username}>
+              Hello, {user?.fullname?.split(" ")[0] || "there"}
             </Text>
 
-            <Text style={styles.name}>{user?.fullname || "Client"}</Text>
+            <View style={styles.location}>
+              <MaterialCommunityIcons
+                name="map-marker"
+                size={15}
+                color="#2563EB"
+              />
+
+              <Text style={styles.locationText}>
+                {user?.state || "Set your location"}, Nigeria
+              </Text>
+            </View>
           </View>
 
-          <TouchableOpacity style={styles.notificationBtn}>
+          <TouchableOpacity
+            style={styles.notificationButton}
+            onPress={() => router.push("/client/notifications" as any)}
+          >
             <MaterialCommunityIcons
               name="bell-outline"
-              size={24}
-              color="#fff"
+              size={23}
+              color="#0F172A"
             />
+
+            <View style={styles.notificationDot} />
           </TouchableOpacity>
         </View>
 
-        {/* BALANCE CARD */}
-        <View style={styles.balanceCard}>
-          <Text style={styles.balanceLabel}>Total Spent</Text>
+        {/* SEARCH SECTION */}
+        <View style={styles.searchCard}>
+          <Text style={styles.searchTitle}>
+            What service do you need today?
+          </Text>
 
-          <Text style={styles.balanceAmount}>$4,250</Text>
+          <Text style={styles.searchSubtitle}>
+            Find trusted professionals around you.
+          </Text>
 
-          <Text style={styles.balanceSub}>Across 18 completed projects</Text>
+          <View style={styles.searchBox}>
+            <MaterialCommunityIcons name="magnify" size={23} color="#94A3B8" />
+
+            <TextInput
+              placeholder="Search artisans or services..."
+              placeholderTextColor="#94A3B8"
+              value={search}
+              onChangeText={setSearch}
+              style={styles.searchInput}
+            />
+
+            <MaterialCommunityIcons
+              name="tune-variant"
+              size={21}
+              color="#2563EB"
+            />
+          </View>
         </View>
 
-        {/* QUICK ACTIONS */}
+        {/* CATEGORIES */}
         <View style={styles.sectionHeader}>
-          <Text style={styles.sectionTitle}>Quick Actions</Text>
-        </View>
-        <View style={styles.quickActions}>
-          {/* <TouchableOpacity
-            style={styles.actionCard}
-            onPress={() => navigation.navigate("PostGig")}
-          >
-            <MaterialCommunityIcons
-              name="plus-circle-outline"
-              size={30}
-              color="#2563EB"
-            />
-
-            <Text style={styles.actionText}>Post Gig</Text>
-          </TouchableOpacity> */}
+          <View>
+            <Text style={styles.sectionTitle}>Explore Services</Text>
+            <Text style={styles.sectionSubtitle}>
+              Find the right professional for your needs.
+            </Text>
+          </View>
 
           <TouchableOpacity
-            style={styles.actionCard}
-            onPress={() => router.push("/(Messenger)/Hire")}
+            onPress={() => router.push("/client/categories" as any)}
           >
-            <MaterialCommunityIcons
-              name="account-search-outline"
-              size={30}
-              color="#2563EB"
-            />
-
-            <Text style={styles.actionText}>Hire Worker</Text>
-          </TouchableOpacity>
-
-          <TouchableOpacity
-            style={styles.actionCard}
-            onPress={() => router.push("/(Messenger)/Message")}
-          >
-            <MaterialCommunityIcons
-              name="chat-processing-outline"
-              size={30}
-              color="#2563EB"
-            />
-
-            <Text style={styles.actionText}>Messages</Text>
+            <Text style={styles.seeAll}>See all</Text>
           </TouchableOpacity>
         </View>
 
-        {/* STATS */}
-        <View style={styles.statsRow}>
-          <View style={styles.statCard}>
-            <Text style={styles.statNumber}>12</Text>
-
-            <Text style={styles.statLabel}>Active Jobs</Text>
-          </View>
-
-          <View style={styles.statCard}>
-            <Text style={styles.statNumber}>38</Text>
-
-            <Text style={styles.statLabel}>Proposals</Text>
-          </View>
-
-          <View style={styles.statCard}>
-            <Text style={styles.statNumber}>4.9</Text>
-
-            <Text style={styles.statLabel}>Rating</Text>
-          </View>
-        </View>
-
-        {/* RECENT PROJECTS */}
-        <View style={styles.section}>
-          <View style={styles.sectionHeader}>
-            <Text style={styles.sectionTitle}>Recent Projects</Text>
-
-            <Text style={styles.seeAll}>See All</Text>
-          </View>
-
-          {recentProjects.map((project) => (
-            <TouchableOpacity key={project.id} style={styles.projectCard}>
-              <View style={styles.projectTop}>
-                <Text style={styles.projectTitle}>{project.title}</Text>
-
-                <View
-                  style={[
-                    styles.statusBadge,
-                    {
-                      backgroundColor:
-                        project.status === "In Progress"
-                          ? "#DBEAFE"
-                          : "#FEF3C7",
-                    },
-                  ]}
-                >
-                  <Text
-                    style={{
-                      fontSize: 11,
-                      fontWeight: "600",
-                      color:
-                        project.status === "In Progress"
-                          ? "#2563EB"
-                          : "#D97706",
-                    }}
-                  >
-                    {project.status}
-                  </Text>
-                </View>
+        <View style={styles.categoryGrid}>
+          {categories.map((category) => (
+            <TouchableOpacity
+              key={category.id}
+              style={styles.categoryItem}
+              onPress={() => {
+                setSelectedCategory(category.name);
+                setSearch("");
+              }}
+            >
+              <View style={styles.categoryIcon}>
+                <MaterialCommunityIcons
+                  name={category.icon as any}
+                  size={25}
+                  color="#2563EB"
+                />
               </View>
 
-              <Text style={styles.freelancer}>
-                Freelancer: {project.freelancer}
-              </Text>
-
-              <View style={styles.projectBottom}>
-                <Text style={styles.budget}>{project.budget}</Text>
-
-                <TouchableOpacity style={styles.viewBtn}>
-                  <Text style={styles.viewBtnText}>View</Text>
-                </TouchableOpacity>
-              </View>
+              <Text style={styles.categoryName}>{category.name}</Text>
             </TouchableOpacity>
           ))}
         </View>
 
-        {/* POST NEW PROJECT CTA */}
-        <TouchableOpacity
-          style={styles.postCard}
-          onPress={() => navigation.navigate("PostGig")}
-        >
-          <MaterialCommunityIcons
-            name="briefcase-plus-outline"
-            size={32}
-            color="#fff"
-          />
-
-          <View style={{ marginLeft: 15 }}>
-            <Text style={styles.postTitle}>Need a freelancer?</Text>
-
-            <Text style={styles.postSub}>
-              Post a project and receive proposals
+        {/* TOP ARTISANS */}
+        <View style={styles.sectionHeader}>
+          <View>
+            <Text style={styles.sectionTitle}>Top Artisans</Text>
+            <Text style={styles.sectionSubtitle}>
+              Professionals clients love.
             </Text>
           </View>
-        </TouchableOpacity>
+
+          <TouchableOpacity
+            onPress={() => router.push("/client/artisans" as any)}
+          >
+            <Text style={styles.seeAll}>View all</Text>
+          </TouchableOpacity>
+        </View>
+
+        {loading && (
+          <ActivityIndicator color="#2563EB" style={{ marginVertical: 15 }} />
+        )}
+
+        {filteredArtisans.length === 0 ? (
+          <View style={styles.emptyState}>
+            <MaterialCommunityIcons
+              name="account-search-outline"
+              size={38}
+              color="#94A3B8"
+            />
+
+            <Text style={styles.emptyTitle}>No artisans found</Text>
+
+            <Text style={styles.emptySubtitle}>
+              Try searching for another service.
+            </Text>
+          </View>
+        ) : (
+          filteredArtisans.map((artisan: any) => (
+            <TouchableOpacity
+              key={artisan.id}
+              style={styles.artisanCard}
+              onPress={() => openArtisan(artisan)}
+              activeOpacity={0.8}
+            >
+              <Image
+                source={{
+                  uri:
+                    artisan.profile_picture ||
+                    artisan.image ||
+                    "https://i.pravatar.cc/300?img=12",
+                }}
+                style={styles.artisanImage}
+              />
+
+              <View style={styles.artisanDetails}>
+                <Text style={styles.artisanName}>
+                  {artisan.name || artisan.fullname}
+                </Text>
+
+                <Text style={styles.artisanOccupation}>
+                  {artisan.occupation || artisan.skill}
+                </Text>
+
+                <View style={styles.ratingRow}>
+                  <MaterialCommunityIcons
+                    name="star"
+                    size={16}
+                    color="#F59E0B"
+                  />
+
+                  <Text style={styles.ratingText}>{artisan.rating || 0}</Text>
+
+                  <Text style={styles.reviewText}>
+                    ({artisan.reviews || 0} reviews)
+                  </Text>
+                </View>
+
+                <View style={styles.artisanLocation}>
+                  <MaterialCommunityIcons
+                    name="map-marker-outline"
+                    size={14}
+                    color="#64748B"
+                  />
+
+                  <Text style={styles.artisanLocationText}>
+                    {artisan.location ||
+                      artisan.state ||
+                      "Location unavailable"}
+                  </Text>
+                </View>
+
+                <View
+                  style={[
+                    styles.availability,
+                    !artisan.available && styles.unavailable,
+                  ]}
+                >
+                  <Text
+                    style={[
+                      styles.availabilityText,
+                      !artisan.available && styles.unavailableText,
+                    ]}
+                  >
+                    {artisan.available ? "Available" : "Currently unavailable"}
+                  </Text>
+                </View>
+              </View>
+
+              <MaterialCommunityIcons
+                name="chevron-right"
+                size={24}
+                color="#94A3B8"
+              />
+            </TouchableOpacity>
+          ))
+        )}
+
+        {/* PROMOTIONAL CARD */}
+        <View style={styles.promoCard}>
+          <View style={styles.promoContent}>
+            <Text style={styles.promoTitle}>Need a professional urgently?</Text>
+
+            <Text style={styles.promoSubtitle}>
+              Connect with skilled artisans and get your work done.
+            </Text>
+
+            <TouchableOpacity
+              style={styles.promoButton}
+              onPress={() => router.push("/client/artisans" as any)}
+            >
+              <Text style={styles.promoButtonText}>Find an Artisan</Text>
+
+              <MaterialCommunityIcons
+                name="arrow-right"
+                size={18}
+                color="#FFFFFF"
+              />
+            </TouchableOpacity>
+          </View>
+
+          <MaterialCommunityIcons name="tools" size={75} color="#BFDBFE" />
+        </View>
+
+        {/* BOTTOM SPACE */}
+        <View style={{ height: 30 }} />
       </ScrollView>
-    </LinearGradient>
+
+      {/* BOTTOM NAVIGATION */}
+      <View style={styles.bottomNav}>
+        <TouchableOpacity
+          style={styles.navItem}
+          onPress={() => router.replace("/client/home" as any)}
+        >
+          <MaterialCommunityIcons name="home" size={23} color="#2563EB" />
+          <Text style={styles.activeNavText}>Home</Text>
+        </TouchableOpacity>
+
+        <TouchableOpacity
+          style={styles.navItem}
+          onPress={() => router.push("/client/bookings" as any)}
+        >
+          <MaterialCommunityIcons
+            name="calendar-check-outline"
+            size={23}
+            color="#94A3B8"
+          />
+          <Text style={styles.navText}>Bookings</Text>
+        </TouchableOpacity>
+
+        <TouchableOpacity
+          style={styles.navItem}
+          onPress={() => router.push("/client/messages" as any)}
+        >
+          <MaterialCommunityIcons
+            name="message-text-outline"
+            size={23}
+            color="#94A3B8"
+          />
+          <Text style={styles.navText}>Messages</Text>
+        </TouchableOpacity>
+
+        <TouchableOpacity
+          style={styles.navItem}
+          onPress={() => router.push("/client/profile" as any)}
+        >
+          <MaterialCommunityIcons
+            name="account-outline"
+            size={23}
+            color="#94A3B8"
+          />
+          <Text style={styles.navText}>Profile</Text>
+        </TouchableOpacity>
+      </View>
+    </View>
   );
 }
 
 const styles = StyleSheet.create({
   container: {
     flex: 1,
+    backgroundColor: "#F8FAFC",
   },
 
   scroll: {
     padding: 20,
-    paddingTop: 20,
-    paddingBottom: 120,
+    paddingTop: 55,
+    paddingBottom: 25,
   },
 
   header: {
@@ -249,192 +478,325 @@ const styles = StyleSheet.create({
     marginBottom: 25,
   },
 
-  welcome: {
+  greeting: {
+    fontSize: 11,
     color: "#94A3B8",
-    fontSize: 14,
+    fontWeight: "700",
+    letterSpacing: 1.2,
   },
 
-  name: {
-    color: "#fff",
-    fontSize: 30,
-    fontWeight: "bold",
+  username: {
+    fontSize: 25,
+    color: "#0F172A",
+    fontWeight: "800",
+    marginTop: 5,
   },
 
-  notificationBtn: {
-    width: 50,
-    height: 50,
-    borderRadius: 25,
-    backgroundColor: "rgba(255,255,255,0.08)",
-    justifyContent: "center",
-    alignItems: "center",
-  },
-
-  balanceCard: {
-    backgroundColor: "#2563EB",
-    borderRadius: 24,
-    padding: 24,
-    marginBottom: 20,
-  },
-
-  balanceLabel: {
-    color: "#DBEAFE",
-    fontSize: 14,
-  },
-
-  balanceAmount: {
-    color: "#fff",
-    fontSize: 38,
-    fontWeight: "bold",
-    marginVertical: 6,
-  },
-
-  balanceSub: {
-    color: "#DBEAFE",
-  },
-
-  quickActions: {
+  location: {
     flexDirection: "row",
-    justifyContent: "space-around",
-    marginBottom: 20,
-  },
-
-  actionCard: {
-    backgroundColor: "#fff",
-    width: "46%",
-    borderRadius: 18,
-    paddingVertical: 18,
     alignItems: "center",
+    marginTop: 6,
+    gap: 4,
   },
 
-  actionText: {
-    marginTop: 10,
+  locationText: {
     fontSize: 12,
-    fontWeight: "600",
-    color: "#0F172A",
-    textAlign: "center",
-  },
-
-  statsRow: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    marginBottom: 20,
-  },
-
-  statCard: {
-    backgroundColor: "#fff",
-    width: "31%",
-    borderRadius: 18,
-    paddingVertical: 18,
-    alignItems: "center",
-  },
-
-  statNumber: {
-    fontSize: 22,
-    fontWeight: "bold",
-    color: "#0F172A",
-  },
-
-  statLabel: {
     color: "#64748B",
-    marginTop: 4,
-    fontSize: 12,
   },
 
-  section: {
-    marginBottom: 20,
+  notificationButton: {
+    width: 47,
+    height: 47,
+    backgroundColor: "#FFFFFF",
+    borderRadius: 15,
+    alignItems: "center",
+    justifyContent: "center",
+    borderWidth: 1,
+    borderColor: "#E2E8F0",
+  },
+
+  notificationDot: {
+    position: "absolute",
+    width: 8,
+    height: 8,
+    backgroundColor: "#EF4444",
+    borderRadius: 4,
+    top: 10,
+    right: 11,
+  },
+
+  searchCard: {
+    backgroundColor: "#FFFFFF",
+    borderRadius: 20,
+    padding: 18,
+    marginBottom: 28,
+    borderWidth: 1,
+    borderColor: "#E2E8F0",
+  },
+
+  searchTitle: {
+    fontSize: 19,
+    fontWeight: "800",
+    color: "#0F172A",
+  },
+
+  searchSubtitle: {
+    fontSize: 12,
+    color: "#64748B",
+    marginTop: 6,
+    marginBottom: 17,
+  },
+
+  searchBox: {
+    height: 51,
+    borderRadius: 13,
+    backgroundColor: "#F1F5F9",
+    flexDirection: "row",
+    alignItems: "center",
+    paddingHorizontal: 13,
+    gap: 9,
+  },
+
+  searchInput: {
+    flex: 1,
+    fontSize: 13,
+    color: "#0F172A",
   },
 
   sectionHeader: {
     flexDirection: "row",
     justifyContent: "space-between",
     alignItems: "center",
-    marginBottom: 14,
+    marginBottom: 16,
   },
 
   sectionTitle: {
-    color: "#fff",
-    fontSize: 20,
-    fontWeight: "bold",
+    fontSize: 18,
+    fontWeight: "800",
+    color: "#0F172A",
+  },
+
+  sectionSubtitle: {
+    fontSize: 12,
+    color: "#94A3B8",
+    marginTop: 4,
   },
 
   seeAll: {
     color: "#2563EB",
-    fontWeight: "600",
-  },
-
-  projectCard: {
-    backgroundColor: "#fff",
-    borderRadius: 18,
-    padding: 18,
-    marginBottom: 14,
-  },
-
-  projectTop: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "center",
-    marginBottom: 10,
-  },
-
-  projectTitle: {
-    fontSize: 16,
+    fontSize: 12,
     fontWeight: "700",
-    color: "#0F172A",
-    width: "70%",
   },
 
-  statusBadge: {
-    paddingHorizontal: 10,
-    paddingVertical: 5,
-    borderRadius: 30,
-  },
-
-  freelancer: {
-    color: "#64748B",
-    marginBottom: 14,
-  },
-
-  projectBottom: {
+  categoryGrid: {
     flexDirection: "row",
+    flexWrap: "wrap",
     justifyContent: "space-between",
+    marginBottom: 30,
+  },
+
+  categoryItem: {
+    width: "23%",
     alignItems: "center",
+    marginBottom: 17,
   },
 
-  budget: {
-    color: "#16A34A",
-    fontWeight: "bold",
-    fontSize: 16,
+  categoryIcon: {
+    width: 61,
+    height: 61,
+    backgroundColor: "#EFF6FF",
+    borderRadius: 18,
+    alignItems: "center",
+    justifyContent: "center",
+    marginBottom: 8,
   },
 
-  viewBtn: {
-    backgroundColor: "#2563EB",
-    paddingHorizontal: 18,
-    paddingVertical: 8,
-    borderRadius: 10,
-  },
-
-  viewBtnText: {
-    color: "#fff",
+  categoryName: {
+    fontSize: 10,
     fontWeight: "600",
+    color: "#475569",
+    textAlign: "center",
   },
 
-  postCard: {
-    backgroundColor: "#1D4ED8",
-    borderRadius: 22,
-    padding: 22,
+  artisanCard: {
+    backgroundColor: "#FFFFFF",
+    padding: 12,
+    borderRadius: 17,
     flexDirection: "row",
     alignItems: "center",
+    marginBottom: 13,
+    borderWidth: 1,
+    borderColor: "#E2E8F0",
+    gap: 12,
+  },
+
+  artisanImage: {
+    width: 83,
+    height: 94,
+    borderRadius: 13,
+    backgroundColor: "#E2E8F0",
+  },
+
+  artisanDetails: {
+    flex: 1,
+  },
+
+  artisanName: {
+    fontSize: 14,
+    fontWeight: "800",
+    color: "#0F172A",
+  },
+
+  artisanOccupation: {
+    fontSize: 11,
+    color: "#64748B",
+    marginTop: 4,
+  },
+
+  ratingRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    marginTop: 7,
+    gap: 3,
+  },
+
+  ratingText: {
+    fontSize: 11,
+    color: "#334155",
+    fontWeight: "700",
+  },
+
+  reviewText: {
+    fontSize: 10,
+    color: "#94A3B8",
+  },
+
+  artisanLocation: {
+    flexDirection: "row",
+    alignItems: "center",
+    marginTop: 6,
+    gap: 3,
+  },
+
+  artisanLocationText: {
+    fontSize: 10,
+    color: "#64748B",
+  },
+
+  availability: {
+    alignSelf: "flex-start",
+    backgroundColor: "#DCFCE7",
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 6,
+    marginTop: 7,
+  },
+
+  unavailable: {
+    backgroundColor: "#F1F5F9",
+  },
+
+  availabilityText: {
+    color: "#15803D",
+    fontSize: 9,
+    fontWeight: "700",
+  },
+
+  unavailableText: {
+    color: "#64748B",
+  },
+
+  emptyState: {
+    backgroundColor: "#FFFFFF",
+    borderRadius: 17,
+    padding: 30,
+    alignItems: "center",
+    marginBottom: 20,
+  },
+
+  emptyTitle: {
+    fontSize: 15,
+    fontWeight: "700",
+    color: "#334155",
     marginTop: 10,
   },
 
-  postTitle: {
-    color: "#fff",
-    fontSize: 18,
-    fontWeight: "bold",
+  emptySubtitle: {
+    fontSize: 12,
+    color: "#94A3B8",
+    marginTop: 5,
   },
 
-  postSub: {
+  promoCard: {
+    backgroundColor: "#1D4ED8",
+    borderRadius: 20,
+    padding: 18,
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    marginTop: 13,
+    overflow: "hidden",
+  },
+
+  promoContent: {
+    flex: 1,
+    paddingRight: 8,
+  },
+
+  promoTitle: {
+    fontSize: 17,
+    fontWeight: "800",
+    color: "#FFFFFF",
+  },
+
+  promoSubtitle: {
+    fontSize: 11,
     color: "#DBEAFE",
-    marginTop: 4,
+    lineHeight: 17,
+    marginTop: 7,
+  },
+
+  promoButton: {
+    flexDirection: "row",
+    alignItems: "center",
+    alignSelf: "flex-start",
+    backgroundColor: "#FFFFFF",
+    paddingHorizontal: 13,
+    paddingVertical: 10,
+    borderRadius: 10,
+    marginTop: 13,
+    gap: 7,
+  },
+
+  promoButtonText: {
+    fontSize: 11,
+    color: "#1D4ED8",
+    fontWeight: "800",
+  },
+
+  bottomNav: {
+    flexDirection: "row",
+    backgroundColor: "#FFFFFF",
+    paddingTop: 12,
+    paddingBottom: Platform.OS === "ios" ? 25 : 12,
+    justifyContent: "space-around",
+    borderTopWidth: 1,
+    borderTopColor: "#E2E8F0",
+  },
+
+  navItem: {
+    alignItems: "center",
+    gap: 4,
+  },
+
+  navText: {
+    fontSize: 10,
+    color: "#94A3B8",
+  },
+
+  activeNavText: {
+    fontSize: 10,
+    color: "#2563EB",
+    fontWeight: "800",
   },
 });

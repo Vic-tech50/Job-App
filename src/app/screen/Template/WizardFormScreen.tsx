@@ -108,32 +108,7 @@ const WizardForm = ({ route, navigation }: Props) => {
   // Get only the LGAs belonging to the selected state.
   const lgaList = selectedStateData?.lgas || [];
 
-  // const handleSubmit = async () => {
-  //   try {
-  //     const response = await fetch("http://nativephpapp.test/api/users", {
-  //       method: "POST",
-  //       headers: {
-  //         "Content-Type": "application/json",
-  //       },
-  //       body: JSON.stringify({
-  //         ...formData,
-  //         gender: checked,
-  //       }),
-  //     });
-
-  //     if (!response.ok) {
-  //       throw new Error("Failed to submit form");
-  //     }
-
-  //     const data = await response.json();
-
-  //     alert("Form submitted successfully!");
-  //     console.log(data);
-  //   } catch (error) {
-  //     alert("Error submitting form");
-  //     console.error(error);
-  //   }
-  // };
+ 
 
   const updateData = async () => {
     try {
