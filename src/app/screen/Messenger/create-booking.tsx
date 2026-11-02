@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 
 import {
   ActivityIndicator,
@@ -18,7 +18,6 @@ import { useLocalSearchParams, useRouter } from "expo-router";
 
 import { ToastMess } from "@/src/utils/toast";
 import { api } from "../../config";
-import { Picker } from "@react-native-picker/picker";
 
 // Create booking page.
 export default function CreateBooking() {
@@ -41,6 +40,24 @@ export default function CreateBooking() {
   const [preferredDate, setPreferredDate] = useState("");
   const [preferredTime, setPreferredTime] = useState("");
   const [budget, setBudget] = useState("");
+
+  const [user, setUser] = useState<any>(null);
+  const loadUser = async () => {
+    try {
+      const storedUser = await AsyncStorage.getItem("user");
+
+      if (storedUser) {
+        const userData = JSON.parse(storedUser);
+        setUser(userData);
+      }
+    } catch (error) {
+      console.log("Error loading user:", error);
+    }
+  };
+
+  useEffect(() => {
+    loadUser();
+  }, []);
 
   // Loading state.
   const [loading, setLoading] = useState(false);
@@ -122,6 +139,7 @@ export default function CreateBooking() {
       // Prepare booking information.
       const bookingData = {
         artisan_id: artisanId,
+        client_id: user?.id,
         service: service.trim(),
         description: description.trim(),
         address: address.trim(),
@@ -235,7 +253,7 @@ export default function CreateBooking() {
         {/* Service information */}
         <Text style={styles.sectionTitle}>Service Information</Text>
 
-          {/* <Picker
+        {/* <Picker
                             selectedValue={service}
                             onValueChange={(itemValue) =>
                               handleChange("service", itemValue)

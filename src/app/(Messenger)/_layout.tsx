@@ -8,7 +8,7 @@ const tabIcons: Record<string, [string, string]> = {
   index: ["view-dashboard", "view-dashboard-outline"],
   Hire: ["account-search", "account-search-outline"],
   Message: ["message-text", "message-text-outline"],
-  // Payment: ["credit-card", "credit-card-outline"],
+  Booking: ["calendar-check", "calendar-blank-outline"],
   Profile: ["account", "account-outline"],
 };
 
@@ -100,10 +100,10 @@ export default function TabLayout() {
         options={{ title: "Messages" }}
       />
 
-      {/* <Tabs.Screen
-        name="Payment"
-        options={{ title: "Payments" }}
-      /> */}
+      <Tabs.Screen
+        name="Booking"
+        options={{ title: "Bookings" }}
+      />
 
       <Tabs.Screen
         name="Profile"
