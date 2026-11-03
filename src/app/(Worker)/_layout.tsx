@@ -72,6 +72,18 @@ export default function TabLayout() {
           ),
         }}
       />
+
+      <Tabs.Screen
+        name="workerBookings"
+        options={{
+          title: "Bookings",
+          tabBarIcon: ({ color }) => (
+            <FontAwesome size={28} name="calendar" color={color} />
+          ),
+        }}
+      />
+
+      
       <Tabs.Screen
         name="Message"
         options={{
