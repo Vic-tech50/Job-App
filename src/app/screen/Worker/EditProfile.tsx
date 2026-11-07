@@ -1,8 +1,10 @@
+// EditProfile.tsx
 
 import { ToastMess } from "@/src/utils/toast";
 import AsyncStorage from "@react-native-async-storage/async-storage";
+import { File } from "expo-file-system";
 import { useRouter } from "expo-router";
-import React, { useEffect, useState } from "react";
+import { useEffect, useState } from "react";
 
 import {
   ActivityIndicator,
@@ -16,66 +18,117 @@ import {
   View,
 } from "react-native";
 
-import { Button, RadioButton, TextInput } from "react-native-paper";
-import * as ImagePicker from "expo-image-picker";
 import { MaterialCommunityIcons } from "@expo/vector-icons";
+import * as ImagePicker from "expo-image-picker";
+import { Button, RadioButton, TextInput } from "react-native-paper";
 
 import { api } from "../../config";
 
+// Default image displayed when the user has no profile picture.
 const DEFAULT_AVATAR = "https://i.pravatar.cc/300?img=12";
+
+// Type describing a selected image from the gallery.
+type SelectedImage = {
+  uri: string;
+  name: string;
+  type: string;
+};
 
 export default function EditProfile() {
   const router = useRouter();
 
-  // User information
+  // User information.
   const [id, setId] = useState("");
-  const [name, setName] = useState("");
+  const [fullname, setFullname] = useState("");
   const [email, setEmail] = useState("");
   const [phone, setPhone] = useState("");
   const [state, setState] = useState("");
   const [lga, setLga] = useState("");
+  const [bio, setBio] = useState("");
   const [dateOfBirth, setDateOfBirth] = useState("");
   const [street, setStreet] = useState("");
   const [checked, setChecked] = useState("");
 
-  // Profile picture
+  // Existing image URL from the server.
   const [profileImage, setProfileImage] = useState<string | null>(null);
-  const [originalImage, setOriginalImage] = useState<string | null>(null);
 
-  // Loading states
+  // New image selected from the device.
+  // This is separate from profileImage so remote URLs are never uploaded.
+  const [selectedImage, setSelectedImage] = useState<SelectedImage | null>(
+    null,
+  );
+
+  // Screen loading states.
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
 
-  // Load existing user information
+  // Displayed image: selected local image takes priority.
+  const displayedImage = selectedImage?.uri || profileImage || DEFAULT_AVATAR;
+
+  const formatDate = (date: string): string => {
+  // Return an empty value if no date is provided.
+  if (!date) return "";
+
+  // Parse the date.
+  const parsedDate = new Date(date);
+
+  // Check for an invalid date.
+  if (Number.isNaN(parsedDate.getTime())) return "";
+
+  // Format as YYYY-MM-DD.
+  return [
+    parsedDate.getFullYear(),
+    String(parsedDate.getMonth() + 1).padStart(2, "0"),
+    String(parsedDate.getDate()).padStart(2, "0"),
+  ].join("-");
+};
+
+ 
+
+  // Load the existing user information.
   const loadUser = async () => {
     try {
       const storedUser = await AsyncStorage.getItem("user");
 
-      if (storedUser) {
-        const user = JSON.parse(storedUser);
+      if (!storedUser) {
+        ToastMess({
+          type: "error",
+          title: "User Not Found",
+          content: "Please log in again.",
+        });
 
-        setId(String(user.id || ""));
-        setName(user.fullname || "");
-        setEmail(user.email || "");
-        setPhone(user.phone || user.phoneNumber || "");
-        setState(user.state || "");
-        setLga(user.lga || "");
-        setStreet(user.street || user.streetAddress || "");
-        setChecked(user.gender || "");
-        setDateOfBirth(user.dob || user.dateOfBirth || "");
-
-        // Support common profile image field names
-        const image =
-          user.profile_picture ||
-          user.avatar ||
-          user.photo ||
-          null;
-
-        setProfileImage(image);
-        setOriginalImage(image);
+        return;
       }
+
+      const user = JSON.parse(storedUser);
+
+       const dob = formatDate(user?.dob || user?.dateOfBirth || dateOfBirth);
+
+      setId(String(user.id || ""));
+      setFullname(user.fullname || user.name || "");
+      setEmail(user.email || "");
+      setPhone(user.phone || user.phoneNumber || "");
+      setState(user.state || "");
+      setLga(user.lga || "");
+      setStreet(user.street || user.streetAddress || "");
+      setChecked(user.gender || "");
+      setDateOfBirth(dob);
+      setBio(user.bio || "");
+
+      // Support common profile image field names.
+      const image = `${api}/uploads/${user?.passport}` || 
+        null;
+
+      setProfileImage(image);
+      setSelectedImage(null);
     } catch (error) {
       console.log("Error loading user:", error);
+
+      ToastMess({
+        type: "error",
+        title: "Loading Error",
+        content: "Unable to load your profile information.",
+      });
     } finally {
       setLoading(false);
     }
@@ -85,9 +138,10 @@ export default function EditProfile() {
     loadUser();
   }, []);
 
-  // Select profile picture from gallery
+  // Select a new profile picture.
   const changePhoto = async () => {
     try {
+      // Request permission to access the gallery.
       const permission =
         await ImagePicker.requestMediaLibraryPermissionsAsync();
 
@@ -97,9 +151,11 @@ export default function EditProfile() {
           title: "Permission Required",
           content: "Please allow access to your photo library.",
         });
+
         return;
       }
 
+      // Open the device gallery.
       const result = await ImagePicker.launchImageLibraryAsync({
         mediaTypes: ["images"],
         allowsEditing: true,
@@ -107,9 +163,47 @@ export default function EditProfile() {
         quality: 0.8,
       });
 
-      if (!result.canceled && result.assets.length > 0) {
-        setProfileImage(result.assets[0].uri);
+      // Stop if the user cancels the selection.
+      if (result.canceled || !result.assets?.length) {
+        return;
       }
+
+      const asset = result.assets[0];
+
+      // Determine the file extension.
+      const extension =
+        asset.fileName?.split(".").pop()?.toLowerCase() ||
+        asset.uri.split(".").pop()?.split("?")[0]?.toLowerCase() ||
+        "jpg";
+
+      // Determine the MIME type.
+      let mimeType = asset.mimeType;
+
+      if (!mimeType) {
+        if (extension === "png") {
+          mimeType = "image/png";
+        } else if (extension === "webp") {
+          mimeType = "image/webp";
+        } else {
+          mimeType = "image/jpeg";
+        }
+      }
+
+      // Create a filename if the device does not provide one.
+      const filename = asset.fileName || `profile_${Date.now()}.${extension}`;
+
+      // Save the selected image details for FormData.
+      setSelectedImage({
+        uri: asset.uri,
+        name: filename,
+        type: mimeType,
+      });
+
+      console.log("Selected image:", {
+        uri: asset.uri,
+        name: filename,
+        type: mimeType,
+      });
     } catch (error) {
       console.log("Image picker error:", error);
 
@@ -121,120 +215,177 @@ export default function EditProfile() {
     }
   };
 
-  // Restore the original picture before saving
+  // Cancel a newly selected image.
   const cancelPhotoChange = () => {
-    setProfileImage(originalImage);
+    setSelectedImage(null);
   };
 
-  // Update profile information
+  // Update the profile information.
   const updateData = async () => {
-    if (!name.trim() || !email.trim()) {
+    // Validate required fields.
+    if (!fullname.trim() || !email.trim()) {
       ToastMess({
         type: "error",
         title: "Missing Information",
         content: "Full name and email are required.",
       });
+
       return;
     }
 
+    // Validate the user ID.
     if (!id) {
       ToastMess({
         type: "error",
         title: "User Not Found",
         content: "Please log in again.",
       });
+
+      return;
+    }
+
+    if (saving) {
       return;
     }
 
     setSaving(true);
 
     try {
+      // Get the authentication token.
       const token = await AsyncStorage.getItem("token");
 
-      // FormData allows text fields and images in one request
+      // Create FormData for text fields and an optional image.
       const formData = new FormData();
 
-      formData.append("id", id);
-      formData.append("fullname", name.trim());
+      // Append all profile information.
+      formData.append("id", String(id));
+      formData.append("fullname", fullname.trim());
       formData.append("email", email.trim());
-      formData.append("phoneNumber", phone);
-      formData.append("dateOfBirth", dateOfBirth);
+      formData.append("phoneNumber", phone.trim());
+      formData.append("dateOfBirth", dateOfBirth.trim());
       formData.append("gender", checked);
-      formData.append("state", state);
-      formData.append("lga", lga);
-      formData.append("streetAddress", street);
+      formData.append("state", state.trim());
+      formData.append("lga", lga.trim());
+      formData.append("streetAddress", street.trim());
+      formData.append("bio", bio.trim());
 
-      // Only upload when a new local image has been selected
-      if (
-        profileImage &&
-        profileImage !== originalImage &&
-        !profileImage.startsWith("http")
-      ) {
-        const filename =
-          profileImage.split("/").pop() || "profile.jpg";
+      // Convert the selected image URI into an Expo File object.
+      if (selectedImage) {
+        const imageFile = new File(selectedImage.uri);
 
-        const extension = filename.split(".").pop()?.toLowerCase();
-
-        const mimeType =
-          extension === "png"
-            ? "image/png"
-            : extension === "webp"
-            ? "image/webp"
-            : "image/jpeg";
-
-        formData.append(
-          "profile_picture",
-          {
-            uri: profileImage,
-            name: filename,
-            type: mimeType,
-          } as any
-        );
+        // Append the file with its original filename.
+        formData.append("image", imageFile, selectedImage.name);
       }
 
+      // Append the image only if a new one was selected.
+      // if (selectedImage) {
+      //   // React Native expects a file object with uri, name and type.
+      //   formData.append("profile_picture", {
+      //     uri: selectedImage.uri,
+      //     name: selectedImage.name,
+      //     type: selectedImage.type,
+      //   } as any);
+      // }
+
+      console.log("Submitting profile update:", {
+        id,
+        fullname,
+        email,
+        hasNewImage: Boolean(selectedImage),
+      });
+
+      // Send the request to your backend.
       const response = await fetch(`${api}/users/updateprofile`, {
         method: "POST",
+
         headers: {
+          Accept: "application/json",
+
+          // Include the token when available.
           ...(token ? { Authorization: `Bearer ${token}` } : {}),
-          // Do not manually set Content-Type for FormData.
-          // React Native must add the multipart boundary.
+
+          // IMPORTANT:
+          // Do not manually set Content-Type here.
+          // Fetch must generate the multipart boundary.
         },
+
         body: formData,
       });
 
-      const data = await response.json();
+      // Read the response as text first.
+      // This prevents JSON parsing errors if the server returns HTML or text.
+      const responseText = await response.text();
 
-      if (!response.ok) {
-        ToastMess({
-          type: "error",
-          title: "Update Failed",
-          content: data.message || "Failed to update profile.",
-        });
-        return;
+      console.log("Update response status:", response.status);
+      console.log("Update response body:", responseText);
+
+      // Convert the response to JSON.
+      let data: any = {};
+
+      try {
+        data = responseText ? JSON.parse(responseText) : {};
+      } catch {
+        throw new Error(
+          "The server returned an invalid response. Check your backend route.",
+        );
       }
 
-      // Update locally stored user information
+      // Check whether the server accepted the update.
+      if (
+        !response.ok ||
+        data.status === false ||
+        data.success === false ||
+        data.ok === false
+      ) {
+        throw new Error(
+          data.message || `Profile update failed (${response.status}).`,
+        );
+      }
+
+      // Read the existing locally stored user.
       const storedUser = await AsyncStorage.getItem("user");
+
       const existingUser = storedUser ? JSON.parse(storedUser) : {};
 
+      // Build the updated user information.
       const updatedUser = {
         ...existingUser,
         id,
-        fullname: name,
-        email,
-        phone,
-        phoneNumber: phone,
-        state,
-        lga,
-        street,
-        streetAddress: street,
+        fullname: fullname.trim(),
+        name: fullname.trim(),
+        email: email.trim(),
+        phone: phone.trim(),
+        phoneNumber: phone.trim(),
+        state: state.trim(),
+        lga: lga.trim(),
+        street: street.trim(),
+        streetAddress: street.trim(),
         gender: checked,
-        dob: dateOfBirth,
-        dateOfBirth,
+        dob: dateOfBirth.trim(),
+        dateOfBirth: dateOfBirth.trim(),
+        bio: bio.trim(),
+
+        // Use the image URL returned by the backend when available.
         ...(data.user || {}),
       };
 
+      // Save the updated user information locally.
       await AsyncStorage.setItem("user", JSON.stringify(updatedUser));
+
+      // Update the image URL displayed by this screen if the backend
+      // returned a new image URL.
+      const returnedImage =
+        data.user?.profile_picture ||
+        data.user?.profilePicture ||
+        data.user?.avatar ||
+        null;
+
+      if (returnedImage) {
+        setProfileImage(returnedImage);
+      }
+
+      // Clear the selected local image after successful upload.
+      setSelectedImage(null);
 
       ToastMess({
         type: "success",
@@ -242,13 +393,14 @@ export default function EditProfile() {
         content: data.message || "Your profile has been updated.",
       });
 
+      // Return to the previous screen.
       router.back();
     } catch (error: any) {
       console.log("Profile update error:", error);
 
       ToastMess({
         type: "error",
-        title: "Something Went Wrong",
+        title: "Update Failed",
         content: error?.message || "Unable to update your profile.",
       });
     } finally {
@@ -256,10 +408,12 @@ export default function EditProfile() {
     }
   };
 
+  // Show a loading screen while retrieving user information.
   if (loading) {
     return (
       <View style={styles.loader}>
         <ActivityIndicator size="large" color="#2563EB" />
+
         <Text style={styles.loadingText}>Loading your profile...</Text>
       </View>
     );
@@ -289,6 +443,7 @@ export default function EditProfile() {
           </TouchableOpacity>
 
           <Text style={styles.title}>Edit Profile</Text>
+
           <Text style={styles.subtitle}>
             Manage your personal information and how people see you.
           </Text>
@@ -297,27 +452,18 @@ export default function EditProfile() {
         {/* PROFILE PICTURE CARD */}
         <View style={styles.profileCard}>
           <View style={styles.avatarWrapper}>
-            <Image
-              source={{ uri: profileImage || DEFAULT_AVATAR }}
-              style={styles.avatar}
-            />
+            <Image source={{ uri: displayedImage }} style={styles.avatar} />
 
             <TouchableOpacity
               style={styles.cameraButton}
               onPress={changePhoto}
               activeOpacity={0.8}
             >
-              <MaterialCommunityIcons
-                name="camera"
-                size={19}
-                color="#FFFFFF"
-              />
+              <MaterialCommunityIcons name="camera" size={19} color="#FFFFFF" />
             </TouchableOpacity>
           </View>
 
-          <Text style={styles.profileName}>
-            {name || "Your Name"}
-          </Text>
+          <Text style={styles.profileName}>{fullname || "Your Name"}</Text>
 
           <Text style={styles.profileEmail}>
             {email || "Your email address"}
@@ -332,19 +478,16 @@ export default function EditProfile() {
               size={17}
               color="#2563EB"
             />
-            <Text style={styles.changePhotoText}>
-              Change Profile Picture
-            </Text>
+
+            <Text style={styles.changePhotoText}>Change Profile Picture</Text>
           </TouchableOpacity>
 
-          {profileImage !== originalImage && (
+          {selectedImage && (
             <TouchableOpacity
               onPress={cancelPhotoChange}
               style={styles.cancelPhoto}
             >
-              <Text style={styles.cancelPhotoText}>
-                Cancel photo change
-              </Text>
+              <Text style={styles.cancelPhotoText}>Cancel photo change</Text>
             </TouchableOpacity>
           )}
 
@@ -365,9 +508,8 @@ export default function EditProfile() {
             </View>
 
             <View>
-              <Text style={styles.sectionTitle}>
-                Personal Information
-              </Text>
+              <Text style={styles.sectionTitle}>Personal Information</Text>
+
               <Text style={styles.sectionSubtitle}>
                 Your basic account details
               </Text>
@@ -376,8 +518,8 @@ export default function EditProfile() {
 
           <TextInput
             label="Full Name"
-            value={name}
-            onChangeText={setName}
+            value={fullname}
+            onChangeText={setFullname}
             mode="outlined"
             style={styles.input}
             outlineColor="#E2E8F0"
@@ -434,9 +576,8 @@ export default function EditProfile() {
             </View>
 
             <View>
-              <Text style={styles.sectionTitle}>
-                Location Information
-              </Text>
+              <Text style={styles.sectionTitle}>Location Information</Text>
+
               <Text style={styles.sectionSubtitle}>
                 Where you are currently based
               </Text>
@@ -492,16 +633,12 @@ export default function EditProfile() {
 
             <View>
               <Text style={styles.sectionTitle}>Gender</Text>
-              <Text style={styles.sectionSubtitle}>
-                Select your gender
-              </Text>
+
+              <Text style={styles.sectionSubtitle}>Select your gender</Text>
             </View>
           </View>
 
-          <RadioButton.Group
-            onValueChange={setChecked}
-            value={checked}
-          >
+          <RadioButton.Group onValueChange={setChecked} value={checked}>
             <View style={styles.genderContainer}>
               {["Male", "Female", "Other"].map((gender) => (
                 <TouchableOpacity
@@ -512,10 +649,8 @@ export default function EditProfile() {
                   ]}
                   onPress={() => setChecked(gender)}
                 >
-                  <RadioButton
-                    value={gender}
-                    color="#2563EB"
-                  />
+                  <RadioButton value={gender} color="#2563EB" />
+
                   <Text
                     style={[
                       styles.genderText,
@@ -528,6 +663,45 @@ export default function EditProfile() {
               ))}
             </View>
           </RadioButton.Group>
+        </View>
+
+        {/* BIO */}
+        <View style={styles.card}>
+          <View style={styles.sectionHeader}>
+            <View style={styles.sectionIcon}>
+              <MaterialCommunityIcons
+                name="account-group-outline"
+                size={21}
+                color="#2563EB"
+              />
+            </View>
+
+            <View>
+              <Text style={styles.sectionTitle}>Bio</Text>
+
+              <Text style={styles.sectionSubtitle}>Tell us about yourself</Text>
+            </View>
+          </View>
+
+          <TextInput
+            label="Bio"
+            value={bio}
+            placeholder="Write a brief description about yourself..."
+            onChangeText={setBio}
+            mode="outlined"
+            multiline
+            numberOfLines={3}
+            style={[
+              styles.input,
+              {
+                minHeight: 90,
+                textAlignVertical: "top",
+              },
+            ]}
+            outlineColor="#E2E8F0"
+            activeOutlineColor="#2563EB"
+            left={<TextInput.Icon icon="text" />}
+          />
         </View>
 
         {/* SAVE BUTTON */}
@@ -553,6 +727,7 @@ export default function EditProfile() {
   );
 }
 
+// Screen styles.
 const styles = StyleSheet.create({
   container: {
     flex: 1,
@@ -776,4 +951,4 @@ const styles = StyleSheet.create({
     color: "#94A3B8",
     marginTop: 18,
   },
-})
+});

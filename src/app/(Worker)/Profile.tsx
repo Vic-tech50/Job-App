@@ -1,7 +1,7 @@
-
+import { MaterialCommunityIcons } from "@expo/vector-icons";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { useRouter } from "expo-router";
-import React, { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import {
   ActivityIndicator,
   Alert,
@@ -13,7 +13,6 @@ import {
   TouchableOpacity,
   View,
 } from "react-native";
-import { MaterialCommunityIcons } from "@expo/vector-icons";
 import { api } from "../config";
 
 // Define the artisan profile structure.
@@ -25,11 +24,10 @@ interface User {
   profession?: string;
   email?: string;
   phone?: string;
-  profile_photo?: string;
-  profile_picture?: string;
-  avatar?: string;
+  passport?: string;
   state?: string;
   lga?: string;
+  role?: string;
   street?: string;
   skills?: string[] | string;
   bio?: string;
@@ -60,7 +58,7 @@ export default function Profile() {
 
       // Fetch the latest profile from your backend.
       if (token) {
-        const response = await fetch(`${api}/api/getWorkerData`, {
+        const response = await fetch("", {
           method: "GET",
           headers: {
             Accept: "application/json",
@@ -72,10 +70,7 @@ export default function Profile() {
 
         if (response.ok) {
           const profile =
-            result.data?.worker ||
-            result.worker ||
-            result.data ||
-            result;
+            result.data?.worker || result.worker || result.data || result;
 
           if (profile && typeof profile === "object") {
             setUser(profile);
@@ -105,52 +100,46 @@ export default function Profile() {
 
   // Log the artisan out.
   const logout = () => {
-    Alert.alert(
-      "Logout",
-      "Are you sure you want to logout?",
-      [
-        { text: "Cancel", style: "cancel" },
-        {
-          text: "Logout",
-          style: "destructive",
-          onPress: async () => {
-            try {
-              await AsyncStorage.multiRemove(["token", "user"]);
-              router.replace("/screen/Auth/LoginScreen");
-            } catch (error) {
-              console.log("Logout error:", error);
-              Alert.alert("Error", "Unable to logout. Please try again.");
-            }
-          },
+    Alert.alert("Logout", "Are you sure you want to logout?", [
+      { text: "Cancel", style: "cancel" },
+      {
+        text: "Logout",
+        style: "destructive",
+        onPress: async () => {
+          try {
+            await AsyncStorage.multiRemove(["token", "user"]);
+            router.replace("/screen/Auth/LoginScreen");
+          } catch (error) {
+            console.log("Logout error:", error);
+            Alert.alert("Error", "Unable to logout. Please try again.");
+          }
         },
-      ]
-    );
+      },
+    ]);
   };
 
   // Get the user's display name.
   const fullName = user?.fullname || user?.name || "Artisan";
 
   // Get the user's profession.
-  const profession = user?.occupation || user?.profession || "Professional Artisan";
+  const profession =
+    user?.occupation || user?.profession || "Professional Artisan";
 
   // Get the profile picture.
-  const avatar =
-    user?.profile_photo ||
-    user?.profile_picture ||
-    user?.avatar;
+  const avatar = user?.passport;
 
   // Convert skills into an array.
   const skills = Array.isArray(user?.skills)
     ? user.skills
     : typeof user?.skills === "string"
-      ? user.skills.split(",").map((skill) => skill.trim()).filter(Boolean)
+      ? user.skills
+          .split(",")
+          .map((skill) => skill.trim())
+          .filter(Boolean)
       : [];
 
   // Get the user's location.
-  const location = [
-    user?.lga,
-    user?.state,
-  ].filter(Boolean).join(", ");
+  const location = [user?.lga, user?.state].filter(Boolean).join(", ");
 
   // Reusable settings menu item.
   const MenuItem = ({
@@ -171,12 +160,7 @@ export default function Profile() {
       onPress={onPress}
       activeOpacity={0.7}
     >
-      <View
-        style={[
-          styles.menuIcon,
-          danger && styles.dangerIcon,
-        ]}
-      >
+      <View style={[styles.menuIcon, danger && styles.dangerIcon]}>
         <MaterialCommunityIcons
           name={icon}
           size={22}
@@ -191,11 +175,7 @@ export default function Profile() {
         <Text style={styles.menuSubtitle}>{subtitle}</Text>
       </View>
 
-      <MaterialCommunityIcons
-        name="chevron-right"
-        size={23}
-        color="#94A3B8"
-      />
+      <MaterialCommunityIcons name="chevron-right" size={23} color="#94A3B8" />
     </TouchableOpacity>
   );
 
@@ -215,10 +195,7 @@ export default function Profile() {
       contentContainerStyle={styles.scrollContent}
       showsVerticalScrollIndicator={false}
       refreshControl={
-        <RefreshControl
-          refreshing={refreshing}
-          onRefresh={onRefresh}
-        />
+        <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
       }
     >
       {/* Profile header */}
@@ -241,8 +218,9 @@ export default function Profile() {
         <View style={styles.avatarContainer}>
           {avatar ? (
             <Image
-              source={{ uri: avatar }}
+              source={{ uri: `${api}/uploads/${avatar}` }}
               style={styles.avatar}
+              resizeMode="cover"
             />
           ) : (
             <View style={styles.avatarPlaceholder}>
@@ -260,9 +238,7 @@ export default function Profile() {
         <Text style={styles.name}>{fullName}</Text>
         <Text style={styles.profession}>{profession}</Text>
 
-        {user?.email ? (
-          <Text style={styles.email}>{user.email}</Text>
-        ) : null}
+        {user?.email ? <Text style={styles.email}>{user.email}</Text> : null}
 
         {location ? (
           <View style={styles.locationContainer}>
@@ -298,7 +274,8 @@ export default function Profile() {
         </View>
 
         <Text style={styles.bioText}>
-          {user?.bio || "Add a short description about yourself, your experience and the services you offer."}
+          {user?.bio ||
+            "Add a short description about yourself, your experience and the services you offer."}
         </Text>
 
         <View style={styles.divider} />
@@ -404,7 +381,12 @@ export default function Profile() {
           icon="help-circle-outline"
           title="Help & Support"
           subtitle="Get assistance with your account"
-          onPress={() => Alert.alert("Help & Support", "Support options will be available here.")}
+          onPress={() =>
+            Alert.alert(
+              "Help & Support",
+              "Support options will be available here.",
+            )
+          }
         />
 
         <MenuItem

@@ -421,7 +421,7 @@ export default function BookingDetails() {
           <View>
             <Text style={styles.referenceLabel}>Booking Reference</Text>
             <Text style={styles.referenceValue}>
-              {booking.booking_id || `#${booking.id}`}
+              #{booking.booking_id || `#${booking.id}`}
             </Text>
           </View>
 

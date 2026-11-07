@@ -54,62 +54,33 @@ export default function Dashboard() {
 
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
+  const [user, setUser] = useState<any>(null);
+  const loadUser = async () => {
+    try {
+      const storedUser = await AsyncStorage.getItem("user");
+
+      if (storedUser) {
+        const userData = JSON.parse(storedUser);
+        setUser(userData);
+      }
+    } catch (error) {
+      console.log("Error loading user:", error);
+    }
+  };
+
+  useEffect(() => {
+    loadUser();
+  }, []);
 
   // Fetch artisan profile and bookings.
   const fetchDashboard = useCallback(async () => {
     try {
       const token = await AsyncStorage.getItem("token");
-
-      // Get artisan information.
-      const workerResponse = await fetch(`${api}/api/getWorkerData`, {
-        method: "GET",
-        headers: {
-          Accept: "application/json",
-          ...(token ? { Authorization: `Bearer ${token}` } : {}),
-        },
-      });
-
-      const workerResult = await workerResponse.json();
-
-      if (!workerResponse.ok) {
-        throw new Error(
-          workerResult.message || "Unable to load artisan profile.",
-        );
-      }
-
-      // Support different API response structures.
-      const workerData =
-        workerResult.data?.worker ||
-        workerResult.worker ||
-        workerResult.data ||
-        workerResult;
-
-      setWorker({
-        id: workerData.id,
-        name:
-          workerData.name ||
-          workerData.fullname ||
-          workerData.full_name ||
-          "Artisan",
-        profession:
-          workerData.profession ||
-          workerData.occupation ||
-          workerData.title ||
-          "Professional Artisan",
-        avatar:
-          workerData.avatar ||
-          workerData.profile_photo ||
-          workerData.profile_picture ||
-          "",
-        rating: Number(workerData.rating || 0),
-        location: [workerData.street, workerData.lga, workerData.state]
-          .filter(Boolean)
-          .join(", "),
-      });
+      // const user = await AsyncStorage.getItem("user");
 
       // Get bookings assigned to this artisan.
       const bookingResponse = await fetch(
-        `${api}/api/artisan/bookings/${workerData.id}`,
+        `${api}/api/artisan/bookings/${user?.id}`,
         {
           method: "GET",
           headers: {
@@ -224,6 +195,7 @@ export default function Dashboard() {
         return "#FEF3C7";
     }
   };
+  const avatar = user?.passport;
 
   // Navigate to booking details.
   // const openBooking = (booking: Booking) => {
@@ -345,13 +317,19 @@ export default function Dashboard() {
           <View style={styles.headerText}>
             <Text style={styles.greeting}>Welcome back,</Text>
 
-            <Text style={styles.workerName}>{worker?.name || "Worker"} 👋</Text>
+            <Text style={styles.workerName}>
+              {user?.fullname || "Worker"} 👋
+            </Text>
 
-            <Text style={styles.profession}>{worker?.profession}</Text>
+            <Text style={styles.profession}>{user?.occupation}</Text>
           </View>
 
-          {worker?.avatar ? (
-            <Image source={{ uri: worker.avatar }} style={styles.avatar} />
+          {avatar ? (
+            <Image
+              source={{ uri: `${api}/uploads/${avatar}` }}
+              style={styles.avatar}
+              resizeMode="cover"
+            />
           ) : (
             <View style={styles.avatarPlaceholder}>
               <MaterialCommunityIcons
